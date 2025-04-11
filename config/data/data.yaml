@@ -1,0 +1,45 @@
+# config.yaml
+
+# We can define a top-level root path:
+data_root: "../data"
+
+# Paths
+paths:
+  train_csv: "../data/train.csv"
+  train_audio_dir: "../data/train_audio"
+  output_dir: "../test_augmentations_images" 
+
+# Audio processing
+sample_rate: 32000
+target_duration: 5.0  # seconds
+
+# Spectrogram parameters
+n_fft: 1024
+hop_length: 512
+n_mels: 128
+f_min: 20
+f_max: 16000
+top_db: 80.0
+
+normalize_audio: True
+
+
+# We can choose to reference top-level parameters so we don't repeat them
+filenpath_col: "filename"
+target_col: "primary_label"
+
+# DataLoader config
+batch_size: 32
+num_workers: 4
+pin_memory: true
+
+# Training split settings
+n_folds: 5
+val_fold: 0
+test_size: 0.2
+
+test:
+  num_samples: 10
+  num_cols: 2
+  figsize_width: 3
+  figsize_height: 2

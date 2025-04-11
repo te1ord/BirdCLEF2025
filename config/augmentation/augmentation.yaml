@@ -1,0 +1,39 @@
+# Audio augmentations
+audio:
+  gaussian_noise:
+    min_amplitude: 0.001
+    max_amplitude: 0.015
+    p: 0.5
+  time_stretch:
+    min_rate: 0.8
+    max_rate: 1.2
+    p: 0.5
+  pitch_shift:
+    min_semitones: -4
+    max_semitones: 4
+    p: 0.5
+
+# Spectrogram augmentations
+# spectrogram:
+#   freq_mask:
+#     mask_max_length: 16
+#     mask_max_masks: 2
+#     p: 0.5
+#     inplace: true
+#   time_mask:
+#     mask_max_length: 16
+#     mask_max_masks: 2
+#     p: 0.5
+#     inplace: true
+
+spectrogram:
+  freq_mask:
+    mask_max_length: 20
+    mask_max_masks: 5
+    p: 1
+    inplace: true
+  time_mask:
+    mask_max_length: 30
+    mask_max_masks: 5
+    p: 1
+    inplace: true

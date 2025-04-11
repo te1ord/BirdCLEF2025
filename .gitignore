@@ -1,2 +1,6 @@
 .DS_Store
 archive/
+__pycache__
+hydra_logs
+test_augmentations_images
+data

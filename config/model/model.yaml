@@ -1,0 +1,18 @@
+# Model architecture
+backbone: tf_efficientnet_b0.in1k
+pretrained: true
+in_channels: 1
+
+# Model parameters
+classifier_dropout: 0.5
+normalize_standart: true
+normalize_minmax: true
+
+# Spectrogram parameters
+spec_params:
+  sample_rate: ${data.sample_rate}
+  n_mels: ${data.n_mels}
+  f_min: ${data.f_min}
+  n_fft: ${data.n_fft}
+  hop_length: ${data.hop_length}
+  normalized: true 
