@@ -15,7 +15,7 @@ from omegaconf import DictConfig, OmegaConf
 from audiomentations import Compose, AddGaussianNoise, TimeStretch, PitchShift
 
 # Assuming you have these modules:
-from src.dataset.audio_dataset import AudioDataset
+from src.datasets.audio_dataset import AudioDataset
 
 
 @hydra.main(version_base=None, config_path="../../config", config_name="config")

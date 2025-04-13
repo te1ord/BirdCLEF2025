@@ -4,7 +4,7 @@ import pandas as pd
 from typing import Dict, Any, Optional, Callable, Union
 from torch.utils.data import DataLoader
 from sklearn.model_selection import KFold
-from src.dataset import AudioDataset
+from src.datasets.audio_dataset import AudioDataset
 from src.models import SpecCNNClassifier
 from src.trainer import LitTrainer, AudioForward
 import lightning
