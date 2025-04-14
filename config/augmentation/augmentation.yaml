@@ -1,31 +1,32 @@
 # Audio augmentations
 audio:
-  gaussian_noise:
-    min_amplitude: 0.001
-    max_amplitude: 0.015
-    p: 0.5
-  time_stretch:
-    min_rate: 0.8
-    max_rate: 1.2
-    p: 0.5
-  pitch_shift:
-    min_semitones: -4
-    max_semitones: 4
-    p: 0.5
+  audio_transforms:
+    - name: "gaussian_noise"
+      params:
+        min_amplitude: 0.001
+        max_amplitude: 0.015
+        p: 0.5
+
+    - name: "time_stretch"
+      params:
+        min_rate: 0.8
+        max_rate: 1.2
+        p: 0.5
+
+    - name: "pitch_shift"
+      params:
+        min_semitones: -4
+        max_semitones: 4
+        p: 0.5
+  
+  mixup_audio: True
+  mixup_params:
+    prob: 0.5
+    alpha: 0.5
+    hard_target: True
+
 
 # Spectrogram augmentations
-# spectrogram:
-#   freq_mask:
-#     mask_max_length: 16
-#     mask_max_masks: 2
-#     p: 0.5
-#     inplace: true
-#   time_mask:
-#     mask_max_length: 16
-#     mask_max_masks: 2
-#     p: 0.5
-#     inplace: true
-
 spectrogram:
   freq_mask:
     mask_max_length: 20

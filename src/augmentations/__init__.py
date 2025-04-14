@@ -1,5 +1,7 @@
-from .audio_augmentations import ChannelAgnosticAmplitudeToDB, NormalizeMelSpec
-from .spec_augmentations import CustomFreqMasking, CustomTimeMasking
+from .spec_augmentations import (
+    CustomFreqMasking, CustomTimeMasking,
+    ChannelAgnosticAmplitudeToDB, NormalizeMelSpec
+)
 
 __all__ = [
     "ChannelAgnosticAmplitudeToDB",

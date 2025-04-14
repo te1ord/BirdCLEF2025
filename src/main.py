@@ -5,7 +5,7 @@ import torch
 import random
 import numpy as np
 
-from .trainer.train_utils import train
+from utils.data import train
 
 @hydra.main(version_base=None, config_path="../config", config_name="config")
 def main(cfg: DictConfig) -> None:

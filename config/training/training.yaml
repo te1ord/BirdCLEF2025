@@ -5,23 +5,26 @@ precision: 16-mixed  # or 32-true
 # Optimizer
 optimizer:
   name: AdamW
-  lr: 5e-4
-  weight_decay: 1e-5
+  params:
+    lr: 5e-4
+    weight_decay: 1e-5
 
 # Scheduler
 scheduler:
   name: CosineAnnealingLR
-  T_max: ${epochs}
-  eta_min: 1e-6
+  params:
+    T_max: ${epochs}
+    eta_min: 1e-6
 
 # Loss function
 criterion: CrossEntropyLoss
 
 # Metrics
 metrics:
-  - Accuracy
-  - Recall
-  - Precision
-  - F1Score
+  names:
+    - Accuracy
+    - Recall
+    - Precision
+    - F1Score
   average: macro
   task: multiclass 

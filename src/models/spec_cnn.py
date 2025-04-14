@@ -3,7 +3,7 @@ import torch.nn as nn
 import timm
 from typing import Dict, Any, Optional
 from torchaudio.transforms import MelSpectrogram
-from ..augmentations import ChannelAgnosticAmplitudeToDB, NormalizeMelSpec, CustomFreqMasking, CustomTimeMasking
+from src.augmentations import ChannelAgnosticAmplitudeToDB, NormalizeMelSpec, CustomFreqMasking, CustomTimeMasking
 
 class SpecCNNClassifier(nn.Module):
     def __init__(
