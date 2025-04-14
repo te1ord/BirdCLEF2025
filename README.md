@@ -26,5 +26,11 @@ You can see the slip logic in [cv_split.ipynb](https://github.com/te1ord/BirdCLE
 ---
 
 ## What Went Wrong  
-Due to time constraints, we weren’t able to finish training our own custom model. However, we did manage to submit several **public baseline models** and gathered initial results:  
+Due to time constraints, we weren’t able to finish training our own custom model. 
+
+However, we ran test pipeline on m1 chip :) with following results
+![All texts](assets/val_test_run.jpg)
+![All texts](assets/train_loss_test_run.jpg)
+
+We also manage to submit several **public baseline models** and gathered initial results:  
 ![Alt text](assets/photo_2025-04-14_23-06-09.jpg)
