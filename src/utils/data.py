@@ -14,7 +14,7 @@ def prepare_data(
     filenpath_col: str,
     target_col: str,
     sample_rate: int,
-    duration: float,
+    target_duration: float,
     audio_transforms: Optional[Compose] = None,
     normalize_audio: bool = True,
     mixup_audio: bool = True,
@@ -25,11 +25,10 @@ def prepare_data(
 
     return AudioDataset(
         input_df=df,
-        audio_dir=audio_dir,
         filenpath_col="filepath",
         target_col=target_col,
         sample_rate=sample_rate,
-        target_duration=duration,
+        target_duration=target_duration,
         audio_transforms=audio_transforms,
         normalize_audio=normalize_audio,
         mixup_audio=mixup_audio,
@@ -41,14 +40,7 @@ def create_datasets(
     df: pd.DataFrame,
     val_fold: int,
     audio_dir: str,
-    filenpath_col: str,
-    target_col: str,
-    sample_rate: int,
-    duration: float,
-    audio_transforms: Optional[Compose] = None,
-    normalize_audio: bool = True,
-    mixup_audio: bool = True,
-    mixup_params: Optional[Dict] = {"prob": 0.5, "alpha": 1.0}
+    **kwargs: Dict[str, Any]
 ) -> tuple[AudioDataset, AudioDataset]:
     train_df = df[df["fold"] != val_fold]
     val_df = df[df["fold"] == val_fold]
@@ -56,27 +48,13 @@ def create_datasets(
     train_dataset = prepare_data(
         df=train_df,
         audio_dir=audio_dir,
-        filenpath_col=filenpath_col,
-        target_col=target_col,
-        sample_rate=sample_rate,
-        target_duration=duration,
-        audio_transforms=audio_transforms,
-        normalize_audio=normalize_audio,
-        mixup_audio=mixup_audio,
-        mixup_params=mixup_params
+        **kwargs
     )
 
     val_dataset = prepare_data(
         df=val_df,
         audio_dir=audio_dir,
-        filenpath_col=filenpath_col,
-        target_col=target_col,
-        sample_rate=sample_rate,
-        target_duration=duration,
-        audio_transforms=audio_transforms,
-        normalize_audio=normalize_audio,
-        mixup_audio=mixup_audio,
-        mixup_params=mixup_params
+        **kwargs
     )
 
     return train_dataset, val_dataset
@@ -85,23 +63,9 @@ def create_datasets(
 def create_dataloaders(
     train_dataset: AudioDataset,
     val_dataset: AudioDataset,
-    batch_size: int,
-    num_workers: int,
+    **kwargs: Dict[str, Any]
 ) -> tuple[DataLoader, DataLoader]:
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=batch_size,
-        shuffle=True,
-        num_workers=num_workers,
-        pin_memory=True,
-    )
-
-    val_loader = DataLoader(
-        val_dataset,
-        batch_size=batch_size,
-        shuffle=False,
-        num_workers=num_workers,
-        pin_memory=True,
-    )
+    train_loader = DataLoader(train_dataset, **kwargs)
+    val_loader = DataLoader(val_dataset, **kwargs)
 
     return train_loader, val_loader

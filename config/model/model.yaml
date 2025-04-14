@@ -10,7 +10,7 @@ top_db: 80
 
 # Spectrogram parameters
 spec_params:
-  sample_rate: ${data.sample_rate}
+  sample_rate: ${data.dataset_args.sample_rate}
   n_mels: 128
   f_min: 20
   n_fft: 1024

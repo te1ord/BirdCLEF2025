@@ -18,14 +18,14 @@ def main(cfg: DictConfig):
     # Parse audio transforms
     audio_trasforms = [
         KEY2AUDIO_AUGMENTATION[transform.name](**transform.params)
-        for transform in cfg.augmentation.audio.audio_trasforms
+        for transform in cfg.augmentation.audio.audio_transforms
         ]
     
     train_dataset, val_dataset = create_datasets(
         df=df,
         audio_dir=cfg.data.paths.audio_dir,
         **cfg.data.dataset_args,
-        audio_trasforms=Compose(audio_trasforms),
+        audio_transforms=Compose(audio_trasforms),
         mixup_audio=cfg.augmentation.audio.mixup_audio,
         mixup_params=dict(cfg.augmentation.audio.mixup_params)
         )
