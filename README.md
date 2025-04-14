@@ -27,7 +27,7 @@ You can see the slip logic in [cv_split.ipynb](https://github.com/te1ord/BirdCLE
 
 ## What Went Wrong  
 Due to time constraints, we weren’t able to finish training our own custom model. However, we did manage to submit several **public baseline models** and gathered initial results:  
-![Alt text](assets\photo_2025-04-14_23-06-09.jpg)
+![Alt text](assets/photo_2025-04-14_23-06-09.jpg)
 
 ---
 
