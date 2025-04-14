@@ -11,9 +11,9 @@ from src.trainers import AudioForward, LitTrainer
 from src.augmentations.audio_augmentations import KEY2AUDIO_AUGMENTATION
 
 
-@hydra.main(version_base=None, config_path="../../config", config_name="config")
+@hydra.main(version_base=None, config_path="../config", config_name="train_config")
 def main(cfg: DictConfig):
-    df = pd.read_csv(cfg.data.train_csv)
+    df = pd.read_csv(cfg.data.paths.train_csv)
 
     # Parse audio transforms
     audio_trasforms = [
@@ -23,7 +23,7 @@ def main(cfg: DictConfig):
     
     train_dataset, val_dataset = create_datasets(
         df=df,
-        audio_dir=cfg.data.audio_dir,
+        audio_dir=cfg.data.paths.audio_dir,
         **cfg.data.dataset_args,
         audio_trasforms=Compose(audio_trasforms),
         mixup_audio=cfg.augmentation.audio.mixup_audio,
@@ -53,7 +53,7 @@ def main(cfg: DictConfig):
         **cfg.training.scheduler.params
     )
 
-    trainer = LitTrainer(
+    lightning_model = LitTrainer(
         model=model,
         forward=AudioForward(
             loss_function=torch.nn.BCEWithLogitsLoss(),
@@ -102,3 +102,7 @@ def main(cfg: DictConfig):
     # )
     # trainer.fit(model=lightning_model, train_dataloaders=loaders["train"], val_dataloaders=loaders["valid"])
     # wandb.finish()
+
+
+if __name__ == "__main__":
+    main()
