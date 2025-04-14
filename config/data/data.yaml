@@ -1,45 +1,41 @@
-# config.yaml
-
-# We can define a top-level root path:
 data_root: "../data"
 
 # Paths
 paths:
-  train_csv: "../data/train.csv"
-  train_audio_dir: "../data/train_audio"
-  output_dir: "../test_augmentations_images" 
+  train_csv: "data/cv_split.csv"
+  audio_dir: "data/birdclef2025/train_audio"
 
 # Audio processing
-sample_rate: 32000
-target_duration: 5.0  # seconds
+dataset_args:
+  val_fold: 0
+  train_args:
+    filenpath_col: "filename"
+    target_col: "primary_label"
+    sample_rate: 32000
+    target_duration: 5.0  # seconds
+    normalize_audio: True
+    is_train: True
+  val_args:
+    filenpath_col: "filename"
+    target_col: "primary_label"
+    sample_rate: 32000
+    target_duration: 5.0  # seconds
+    normalize_audio: True
+    is_train: False
+  
 
-# Spectrogram parameters
-n_fft: 1024
-hop_length: 512
-n_mels: 128
-f_min: 20
-f_max: 16000
-top_db: 80.0
-
-normalize_audio: True
-
-
-# We can choose to reference top-level parameters so we don't repeat them
-filenpath_col: "filename"
-target_col: "primary_label"
-
-# DataLoader config
-batch_size: 32
-num_workers: 4
-pin_memory: true
-
-# Training split settings
-n_folds: 5
-val_fold: 0
-test_size: 0.2
-
-test:
-  num_samples: 10
-  num_cols: 2
-  figsize_width: 3
-  figsize_height: 2
+dataloader_args:
+  train_args:
+    batch_size: 16
+    num_workers: 4
+    pin_memory: True
+    shuffle: True
+    drop_last: True
+    
+  val_args:
+    batch_size: 16
+    num_workers: 4
+    pin_memory: True
+    shuffle: False
+    drop_last: True
+    

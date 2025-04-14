@@ -10,9 +10,19 @@ from src.utils.data import create_datasets, create_dataloaders
 from src.trainers import AudioForward, LitTrainer
 from src.augmentations.audio_augmentations import KEY2AUDIO_AUGMENTATION
 
+import wandb
+import lightning
+from lightning.pytorch.callbacks import LearningRateMonitor, ModelCheckpoint
+from lightning.pytorch import loggers as pl_loggers
+import torchmetrics
+from torchmetrics import MetricCollection
+from src.metrics import KEY2METRICS
+from src.utils.other import seed_everything
 
-@hydra.main(version_base=None, config_path="../config", config_name="train_config")
+@hydra.main(version_base=None, config_path="../config", config_name="config")
 def main(cfg: DictConfig):
+    seed_everything(cfg.seed)
+    
     df = pd.read_csv(cfg.data.paths.train_csv)
 
     # Parse audio transforms
@@ -20,6 +30,13 @@ def main(cfg: DictConfig):
         KEY2AUDIO_AUGMENTATION[transform.name](**transform.params)
         for transform in cfg.augmentation.audio.audio_transforms
         ]
+    
+    # parse metrics
+    metrics = [
+        KEY2METRICS[name](**cfg.training.metrics.params)
+        for name in cfg.training.metrics.names
+        ]
+    
     
     train_dataset, val_dataset = create_datasets(
         df=df,
@@ -29,7 +46,7 @@ def main(cfg: DictConfig):
         mixup_audio=cfg.augmentation.audio.mixup_audio,
         mixup_params=dict(cfg.augmentation.audio.mixup_params)
         )
-
+    
     train_loader, val_loader = create_dataloaders(
         train_dataset=train_dataset,
         val_dataset=val_dataset,
@@ -62,46 +79,54 @@ def main(cfg: DictConfig):
         ),
         optimizer=optimizer,
         scheduler=scheduler,
-        scheduler_params={
-            "interval": "epoch",
-            "frequency": 1,
-        },
+        scheduler_params= {**cfg.training.scheduler.config},
         batch_key="specs",
         metric_input_key="targets",
         metric_output_key="predictions",
-        val_metrics=None,
-        train_metrics=None,
+        val_metrics= MetricCollection(metrics, compute_groups=False),
+        train_metrics=MetricCollection(metrics, compute_groups=False),
     )
 
 
-    # all_callbacks = [
-    #     ModelCheckpoint(
-    #         dirpath=os.path.join(exp_name, "checkpoints"),
-    #         save_top_k=n_checkpoints_to_save,
-    #         mode=metric_mode,
-    #         monitor=main_metric,
-    #         **checkpoint_callback_params,
-    #     ),
-    #     LearningRateMonitor(logging_interval="step"),
-    # ]
+    checkpoint_callback_params=dict(
+        save_last=True,
+        auto_insert_metric_name=True,
+        save_weights_only=True,
+        save_on_train_epoch_end=True,
+        filename="{epoch}-{step}-{valid_MultilabelAUROC:.3f}",
+    )
 
-    # wandb_logger = pl_loggers.WandbLogger(
-    #     save_dir=exp_name,
-    #     name=exp_name,
-    #     **wandb_logger_params,
-    # )
-    # trainer = lightning.Trainer(
-    #     devices=-1,
-    #     precision=precision_mode,
-    #     strategy=train_strategy,
-    #     max_epochs=n_epochs,
-    #     logger=wandb_logger,
-    #     log_every_n_steps=log_every_n_steps,
-    #     callbacks=all_callbacks,
-    #     **trainer_params,
-    # )
-    # trainer.fit(model=lightning_model, train_dataloaders=loaders["train"], val_dataloaders=loaders["valid"])
-    # wandb.finish()
+    all_callbacks = [
+        ModelCheckpoint(
+            dirpath=os.path.join(cfg.experiment_name, "checkpoints"),
+            save_top_k=cfg.callbacks.n_checkpoints_to_save,
+            mode=cfg.callbacks.metric_mode,
+            monitor=cfg.callbacks.main_metric,
+            **checkpoint_callback_params,
+        ),
+        LearningRateMonitor(logging_interval="step"),
+    ]
+
+    wandb_logger = pl_loggers.WandbLogger(
+        save_dir=cfg.experiment_name,
+        **cfg.wandb,
+    )
+
+    os.environ['WANDB_LOG_MODEL'] = 'checkpoint'
+
+    trainer = lightning.Trainer(
+        devices=-1,
+        precision=cfg.training.trainer.precision_mode,
+        strategy=cfg.training.trainer.train_strategy,
+        max_epochs=cfg.training.trainer.n_epochs,
+        logger=wandb_logger,
+        log_every_n_steps=cfg.training.trainer.log_every_n_steps,
+        val_check_interval=cfg.training.trainer.val_check_interval,
+        callbacks=all_callbacks,
+        # **trainer_params,
+    )
+    trainer.fit(model=lightning_model, train_dataloaders=train_loader, val_dataloaders=val_loader)
+    wandb.finish()
 
 
 if __name__ == "__main__":

@@ -19,10 +19,12 @@ class AudioDataset(torch.utils.data.Dataset):
         target_col: str = "target",
         sample_rate: int = 32000,
         target_duration: float = 5.,
-        audio_transforms: Optional[Compose] = None,
         normalize_audio: bool = True,
         mixup_audio: bool = True,
-        mixup_params: Optional[Dict] = {"prob": 0.5, "alpha": 1.0}
+        training: bool = True,
+        mixup_params: Optional[Dict] = {"prob": 0.5, "alpha": 1.0},
+        audio_transforms: Optional[Compose] = None,
+
     ):
         self.df = input_df.reset_index(drop=True)
 
@@ -42,6 +44,7 @@ class AudioDataset(torch.utils.data.Dataset):
             assert mixup_params is not None, "If mixup_audio is True, mixup_params must not be None."
         self.mixup_params = mixup_params
 
+        self.training = training
         # TODO: all dataset caching!!!
 
 
@@ -74,17 +77,17 @@ class AudioDataset(torch.utils.data.Dataset):
         else:
             idxs = [idx, sec_idx]
 
-            if self.mixup_params.get("hard_target", True):
-                weights = np.array([1, 1])
-            else:
-                alpha = self.mixup_params['alpha']
-                weights = np.array([alpha, 1-alpha])
+            alpha = self.mixup_params['alpha']
+            weights = np.array([alpha, 1-alpha])
 
 
         labels = self.df.loc[idxs, self.target_col].values.reshape(-1, 1)
         encoded_labels = self.target_encoder.transform(labels).toarray()
 
         soft_labels = weights @ encoded_labels
+
+        if self.mixup_params.get("hard_target", True):
+            soft_labels = (soft_labels > 0).astype(int)
 
         return soft_labels
 
@@ -150,6 +153,7 @@ class AudioDataset(torch.utils.data.Dataset):
         if self.normalize_audio:
             wave = librosa.util.normalize(wave)
 
+        # TODO: make float target for soft labels
         return torch.from_numpy(wave).float(), torch.from_numpy(target).float()
 
 

@@ -21,7 +21,7 @@ class AudioForward(nn.Module):
         specs, targets = batch
 
         output = runner.model(specs)
-        output["predictions"] = torch.argmax(output["logits"], dim=-1)
+        output["predictions"] = torch.sigmoid(output["logits"]) #torch.argmax(output["logits"], dim=-1)
 
         inputs = {
             "specs": specs,
@@ -80,7 +80,7 @@ class LitTrainer(lightning.LightningModule):
         if self._train_metrics is not None:
             self._train_metrics.update(
                 outputs[self._metric_output_key],
-                inputs[self._metric_input_key]
+                inputs[self._metric_input_key].long()
             )
 
         for k, v in losses.items():
@@ -135,7 +135,7 @@ class LitTrainer(lightning.LightningModule):
         if self._val_metrics is not None:
             self._val_metrics.update(
                 outputs[self._metric_output_key],
-                inputs[self._metric_input_key]
+                inputs[self._metric_input_key].long() # long for hard labels
             )
 
         for k, v in losses.items():

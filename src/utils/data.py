@@ -15,10 +15,11 @@ def prepare_data(
     target_col: str,
     sample_rate: int,
     target_duration: float,
+    is_train: bool = True,
     audio_transforms: Optional[Compose] = None,
     normalize_audio: bool = True,
     mixup_audio: bool = True,
-    mixup_params: Optional[Dict] = {"prob": 0.5, "alpha": 1.0}
+    mixup_params: Optional[Dict] = {"prob": 0.5, "alpha": 1.0},
 ) -> AudioDataset:
     
     df['filepath'] = df[filenpath_col].apply(lambda path: os.path.join(audio_dir, path))
@@ -32,7 +33,8 @@ def prepare_data(
         audio_transforms=audio_transforms,
         normalize_audio=normalize_audio,
         mixup_audio=mixup_audio,
-        mixup_params=mixup_params
+        mixup_params=mixup_params,
+        training=is_train
     )
 
 
@@ -48,13 +50,13 @@ def create_datasets(
     train_dataset = prepare_data(
         df=train_df,
         audio_dir=audio_dir,
-        **kwargs
+        **kwargs.get("train_args", {})
     )
 
     val_dataset = prepare_data(
         df=val_df,
         audio_dir=audio_dir,
-        **kwargs
+        **kwargs.get("val_args", {})
     )
 
     return train_dataset, val_dataset
@@ -65,7 +67,7 @@ def create_dataloaders(
     val_dataset: AudioDataset,
     **kwargs: Dict[str, Any]
 ) -> tuple[DataLoader, DataLoader]:
-    train_loader = DataLoader(train_dataset, **kwargs)
-    val_loader = DataLoader(val_dataset, **kwargs)
+    train_loader = DataLoader(train_dataset, **kwargs.get("train_args", {}))
+    val_loader = DataLoader(val_dataset, **kwargs.get("val_args", {}))
 
     return train_loader, val_loader

@@ -1,20 +1,29 @@
 # Training parameters
-epochs: 10
-precision: 16-mixed  # or 32-true
+
+# trainer
+trainer:
+  precision_mode: 16-mixed  # or 32-true
+  train_strategy: auto
+  n_epochs: 10
+  log_every_n_steps: 20
+  val_check_interval: 100
 
 # Optimizer
 optimizer:
   name: AdamW
   params:
-    lr: 5e-4
+    lr: 1e-4
     weight_decay: 1e-5
 
 # Scheduler
 scheduler:
   name: CosineAnnealingLR
   params:
-    T_max: ${epochs}
+    T_max: ${training.trainer.n_epochs}
     eta_min: 1e-6
+  config:
+    interval: step
+    frequency : 1
 
 # Loss function
 criterion: CrossEntropyLoss
@@ -22,9 +31,14 @@ criterion: CrossEntropyLoss
 # Metrics
 metrics:
   names:
-    - Accuracy
-    - Recall
-    - Precision
-    - F1Score
-  average: macro
-  task: multiclass 
+    # - accuracy
+    # - recall
+    # - precision
+    # - f1
+    - rocauc
+  params:
+    average: macro
+    task: multilabel
+    num_labels: ${model.n_classes}
+
+

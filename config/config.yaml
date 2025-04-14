@@ -4,27 +4,29 @@ hydra:
     dir: "../hydra_logs/augmentations"
   output_subdir: ${now:%Y-%m-%d_%H-%M-%S}
 
-
-
 defaults:
   - _self_
   - data: data
   - augmentation: augmentation
-  # - model: model
-  # - training: training
+  - model: model
+  - training: training
 
 # Global settings
 seed: 42
 debug: false
 output_dir: outputs
-experiment_name: audio_classification
+experiment_name: logdirs/debug_run
 
-# Device: choose manually or set it later in code
 device: "cuda"   # or "cpu" if you prefer
 
 # Logging (if used later)
 wandb:
   project: audio-classification
-  entity: null
+  entity: 'BashHav'
   name: ${experiment_name}
   tags: []
+  
+callbacks:
+  n_checkpoints_to_save: 3
+  metric_mode: max
+  main_metric: valid_MultilabelAUROC
