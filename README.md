@@ -1,3 +1,6 @@
+# Homework 3 commit - 085c405
+Check this stage for homework 3 - 14 April 2025
+
 # BirdCLEF 2025 - Kaggle Competition  
 Part of the UCU Audio Processing Course — Homework 3  
 

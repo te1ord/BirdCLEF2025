@@ -53,6 +53,8 @@ def main(cfg: DictConfig):
         **cfg.data.dataloader_args
     )
 
+    # Calculate total number of steps for scheduler
+    total_steps = len(train_loader) * cfg.training.trainer.n_epochs
 
     model = SpecCNNClassifier(
         **cfg.model,
@@ -67,6 +69,7 @@ def main(cfg: DictConfig):
 
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer,
+        T_max=total_steps,
         **cfg.training.scheduler.params
     )
 

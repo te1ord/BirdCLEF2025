@@ -4,26 +4,26 @@
 trainer:
   precision_mode: 16-mixed  # or 32-true
   train_strategy: auto
-  n_epochs: 10
+  n_epochs: 1
   log_every_n_steps: 20
-  val_check_interval: 100
+  val_check_interval: 200
 
 # Optimizer
 optimizer:
   name: AdamW
   params:
-    lr: 1e-4
+    lr: 5e-4
     weight_decay: 1e-5
 
 # Scheduler
 scheduler:
   name: CosineAnnealingLR
   params:
-    T_max: ${training.trainer.n_epochs}
+    # T_max: ${training.trainer.n_epochs} * (total_samples / batch_size) # set dynamically in train.py 
     eta_min: 1e-6
   config:
     interval: step
-    frequency : 1
+      
 
 # Loss function
 criterion: CrossEntropyLoss
@@ -40,5 +40,8 @@ metrics:
     average: macro
     task: multilabel
     num_labels: ${model.n_classes}
+
+    # task: multiclass
+    # num_classes: ${model.n_classes}
 
 
