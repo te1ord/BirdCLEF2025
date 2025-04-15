@@ -4,3 +4,5 @@ __pycache__
 hydra_logs
 test_augmentations_images
 data/birdclef2025
+data/kaggle_datasets/birdclef2025_code/main_folder.zip
+logdirs/

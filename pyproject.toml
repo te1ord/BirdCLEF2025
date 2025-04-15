@@ -19,6 +19,7 @@ omegaconf = "^2.3.0"
 matplotlib = "<3.10"
 ipykernel = "^6.29.5"
 wandb = "^0.19.9"
+kaggle = "^1.7.4.2"
 
 
 [build-system]
