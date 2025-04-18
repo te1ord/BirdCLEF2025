@@ -117,8 +117,16 @@ def main(cfg: DictConfig):
 
     os.environ['WANDB_LOG_MODEL'] = 'checkpoint'
 
+    if torch.cuda.is_available():
+        accelerator = 'cuda'
+    elif torch.backends.mps.is_available():
+        accelerator = 'mps'
+    else:
+        accelerator = 'cpu'
+
     trainer = lightning.Trainer(
-        devices=-1,
+        accelerator=accelerator,
+        devices='auto',
         precision=cfg.training.trainer.precision_mode,
         strategy=cfg.training.trainer.train_strategy,
         max_epochs=cfg.training.trainer.n_epochs,
