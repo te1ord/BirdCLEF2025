@@ -1,5 +1,3 @@
-data_root: "../data"
-
 # Paths
 paths:
   train_csv: "data/cv_split.csv"

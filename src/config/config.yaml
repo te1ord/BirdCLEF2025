@@ -1,7 +1,7 @@
 hydra:
   run:
     # for augmentations runs
-    dir: "../hydra_logs/augmentations"
+    dir: "../../hydra_logs/augmentations"
   output_subdir: ${now:%Y-%m-%d_%H-%M-%S}
 
 defaults:
