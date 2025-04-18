@@ -8,6 +8,8 @@ import librosa
 from audiomentations import Compose
 
 from typing import Dict, Optional
+from concurrent.futures import ThreadPoolExecutor
+from tqdm import tqdm
 
 
 
@@ -24,7 +26,7 @@ class AudioDataset(torch.utils.data.Dataset):
         training: bool = True,
         mixup_params: Optional[Dict] = {"prob": 0.5, "alpha": 1.0},
         audio_transforms: Optional[Compose] = None,
-
+        cache_samples: bool = True,
     ):
         self.df = input_df.reset_index(drop=True)
 
@@ -45,7 +47,10 @@ class AudioDataset(torch.utils.data.Dataset):
         self.mixup_params = mixup_params
 
         self.training = training
-        # TODO: all dataset caching!!!
+        self.cache_samples = cache_samples
+        
+        if self.cache_samples:
+            self._cache_samples()
 
 
     def __len__(self):
@@ -59,6 +64,20 @@ class AudioDataset(torch.utils.data.Dataset):
             )
         
         return target_encoder
+    
+
+    def _cache_samples(self):
+        def load_wave(idx):
+            # return self._get_wave(idx)
+            return self._get_sample(idx)
+
+        self.df['wave'] = None
+        with ThreadPoolExecutor() as executor:
+            self.df['wave'] = list(tqdm(
+                executor.map(load_wave, range(len(self.df))),
+                total=len(self.df),
+                desc="Caching audio samples"
+            ))
 
 
     def _get_mixup_idx(self):
@@ -109,7 +128,7 @@ class AudioDataset(torch.utils.data.Dataset):
         return sample_piece
     
 
-    def _get_sample(self, idx: int):
+    def _get_wave(self, idx: int):
         # Load audio
         # TODO: consider torchaudio.load instead of librosa
         filepath = self.df[self.filenpath_col].iloc[idx]
@@ -120,6 +139,15 @@ class AudioDataset(torch.utils.data.Dataset):
 
         # We know that all samples contain only one channel
         assert len(wave.shape) == 1, "Expected one channel audio."
+
+        return wave
+    
+
+    def _get_sample(self, idx: int):
+        if self.cache_samples:
+            wave = self.df['wave'].iloc[idx]
+        else:
+            wave = self._get_wave(idx)
 
         # Extract center 5 seconds
         wave = self._prepare_sample_piece(wave)
