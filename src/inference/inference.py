@@ -110,18 +110,19 @@ class Inference:
         """Make predictions for all audio files in a directory."""
         all_predictions = pd.DataFrame(columns=['row_id'] + self.class_labels)
         
-        audio_files = [f for f in os.listdir(directory_path) 
-                      if f.endswith(('.ogg', '.wav', '.mp3'))]
-        
+        audio_files = [os.path.join(directory_path, afile) 
+                            for afile in sorted(os.listdir(directory_path)) 
+                            if afile.endswith('.ogg')]
+        # print(audio_files)
+
         # test
         # audio_files = audio_files[:16]
 
         batch = []
         
         for audio_file in tqdm(audio_files, desc="Loading audio files"):
-            audio_path = os.path.join(directory_path, audio_file)
             
-            for chunk in self._get_audio_chunks(audio_path):
+            for chunk in self._get_audio_chunks(audio_file):
                 batch.append(chunk)
 
                 if len(batch) == self.batch_size:
@@ -130,6 +131,12 @@ class Inference:
                     all_predictions = pd.concat([all_predictions, preds], 
                                       axis=0, ignore_index=True)
                     batch = []
+        
+        # finish remaining batches
+        if batch:
+            preds = self._process_batch(batch)
+            all_predictions = pd.concat([all_predictions, preds], 
+                                      axis=0, ignore_index=True)
         
         for i in self.logger:
             print(i)
