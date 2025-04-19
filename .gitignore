@@ -1,4 +1,5 @@
 .DS_Store
+.idea/
 archive/
 __pycache__
 hydra_logs

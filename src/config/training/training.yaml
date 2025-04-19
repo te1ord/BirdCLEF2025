@@ -4,9 +4,9 @@
 trainer:
   precision_mode: 16-mixed  # or 32-true
   train_strategy: auto
-  n_epochs: 1
+  n_epochs: 20
   log_every_n_steps: 20
-  val_check_interval: 200
+#  val_check_interval: 50
 
 # Optimizer
 optimizer:
@@ -38,10 +38,9 @@ metrics:
     - rocauc
   params:
     average: macro
-    task: multilabel
-    num_labels: ${model.n_classes}
-
-    # task: multiclass
-    # num_classes: ${model.n_classes}
+    # task: multilabel
+    # num_labels: ${model.n_classes}
+    task: multiclass
+    num_classes: ${model.n_classes}
 
 

@@ -84,7 +84,7 @@ def main(cfg: DictConfig):
         scheduler=scheduler,
         scheduler_params= {**cfg.training.scheduler.config},
         batch_key="specs",
-        metric_input_key="targets",
+        metric_input_key="targets_1d",
         metric_output_key="predictions",
         val_metrics= MetricCollection(metrics, compute_groups=False),
         train_metrics=MetricCollection(metrics, compute_groups=False),
@@ -121,6 +121,7 @@ def main(cfg: DictConfig):
         accelerator = 'cuda'
     elif torch.backends.mps.is_available():
         accelerator = 'mps'
+        print("MPS device found.")
     else:
         accelerator = 'cpu'
 
@@ -132,7 +133,7 @@ def main(cfg: DictConfig):
         max_epochs=cfg.training.trainer.n_epochs,
         logger=wandb_logger,
         log_every_n_steps=cfg.training.trainer.log_every_n_steps,
-        val_check_interval=cfg.training.trainer.val_check_interval,
+        val_check_interval=cfg.training.trainer.get('val_check_interval'),
         callbacks=all_callbacks,
         # **trainer_params,
     )
