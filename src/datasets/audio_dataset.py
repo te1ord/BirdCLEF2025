@@ -23,10 +23,10 @@ class AudioDataset(torch.utils.data.Dataset):
         target_duration: float = 5.,
         normalize_audio: bool = True,
         mixup_audio: bool = True,
-        training: bool = True,
+        is_train: bool = True,
         mixup_params: Optional[Dict] = {"prob": 0.5, "alpha": 1.0},
         audio_transforms: Optional[Compose] = None,
-        cache_samples: bool = True,
+        cache_samples: bool = False,
     ):
         self.df = input_df.reset_index(drop=True)
 
@@ -40,13 +40,13 @@ class AudioDataset(torch.utils.data.Dataset):
 
         self.audio_transforms = audio_transforms
         self.normalize_audio = normalize_audio
-        self.mixup_audio = mixup_audio
+        self.mixup_audio = mixup_audio and is_train
 
         if self.mixup_audio:
             assert mixup_params is not None, "If mixup_audio is True, mixup_params must not be None."
         self.mixup_params = mixup_params
 
-        self.training = training
+        self.is_train = is_train
         self.cache_samples = cache_samples
         
         if self.cache_samples:
@@ -68,8 +68,7 @@ class AudioDataset(torch.utils.data.Dataset):
 
     def _cache_samples(self):
         def load_wave(idx):
-            # return self._get_wave(idx)
-            return self._get_sample(idx)
+            return self._get_wave(idx)
 
         self.df['wave'] = None
         with ThreadPoolExecutor() as executor:
@@ -103,12 +102,12 @@ class AudioDataset(torch.utils.data.Dataset):
         labels = self.df.loc[idxs, self.target_col].values.reshape(-1, 1)
         encoded_labels = self.target_encoder.transform(labels).toarray()
 
-        soft_labels = weights @ encoded_labels
+        labels = weights @ encoded_labels
 
         if self.mixup_params.get("hard_target", True):
-            soft_labels = (soft_labels > 0).astype(int)
+            labels = (labels > 0).astype(int)
 
-        return soft_labels
+        return labels
 
 
     def _prepare_sample_piece(self, sample):
@@ -173,8 +172,8 @@ class AudioDataset(torch.utils.data.Dataset):
         else:
             target = self._prepare_target(idx)
 
-        # Apply audio augmentations if in training mode
-        if self.audio_transforms is not None and self.training:
+        # Apply audio augmentations if in is_train mode
+        if self.audio_transforms is not None and self.is_train:
             wave = self.audio_transforms(samples=wave, sample_rate=self.sample_rate)
 
         # Normalize audio

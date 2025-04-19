@@ -15,7 +15,7 @@ defaults:
 seed: 42
 debug: false
 output_dir: outputs
-experiment_name: logdirs/debug_run
+experiment_name: logdirs/efficientnet_b0__weights_power-0.5
 
 device: "cuda"   # or "cpu" if you prefer
 
@@ -29,4 +29,4 @@ wandb:
 callbacks:
   n_checkpoints_to_save: 3
   metric_mode: max
-  main_metric: valid_MultilabelAUROC
+  main_metric: valid/MulticlassAUROC

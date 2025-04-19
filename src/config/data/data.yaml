@@ -13,6 +13,12 @@ dataset_args:
     target_duration: 5.0  # seconds
     normalize_audio: True
     is_train: True
+    cache_samples: False
+    mixup_params:
+      prob: 0.5
+      alpha: 0.5
+      hard_target: False
+
   val_args:
     filenpath_col: "filename"
     target_col: "primary_label"
@@ -20,20 +26,23 @@ dataset_args:
     target_duration: 5.0  # seconds
     normalize_audio: True
     is_train: False
+    cache_samples: False
   
 
 dataloader_args:
   train_args:
     batch_size: 16
     num_workers: 4
+    persistent_workers: True
     pin_memory: True
-    shuffle: True
+#    shuffle: True
     drop_last: True
     
   val_args:
     batch_size: 16
     num_workers: 4
+    persistent_workers: True
     pin_memory: True
     shuffle: False
-    drop_last: True
+    drop_last: False
     

@@ -12,14 +12,7 @@ def prepare_data(
     df: pd.DataFrame,
     audio_dir: str,
     filenpath_col: str,
-    target_col: str,
-    sample_rate: int,
-    target_duration: float,
-    is_train: bool = True,
-    audio_transforms: Optional[Compose] = None,
-    normalize_audio: bool = True,
-    mixup_audio: bool = True,
-    mixup_params: Optional[Dict] = {"prob": 0.5, "alpha": 1.0},
+    **kwargs: Dict[str, Any]
 ) -> AudioDataset:
     
     df['filepath'] = df[filenpath_col].apply(lambda path: os.path.join(audio_dir, path))
@@ -27,14 +20,7 @@ def prepare_data(
     return AudioDataset(
         input_df=df,
         filenpath_col="filepath",
-        target_col=target_col,
-        sample_rate=sample_rate,
-        target_duration=target_duration,
-        audio_transforms=audio_transforms,
-        normalize_audio=normalize_audio,
-        mixup_audio=mixup_audio,
-        mixup_params=mixup_params,
-        training=is_train
+        **kwargs
     )
 
 
@@ -44,6 +30,12 @@ def create_datasets(
     audio_dir: str,
     **kwargs: Dict[str, Any]
 ) -> tuple[AudioDataset, AudioDataset]:
+
+    # TODO: write it somehow different
+    target_col = kwargs.get('target_col', 'primary_label')
+    class_weights = (df[target_col].value_counts() / df[target_col].shape[0]) ** (-0.5)
+    df['weight'] = df[target_col].apply(lambda x: class_weights[x])
+
     train_df = df[df["fold"] != val_fold]
     val_df = df[df["fold"] == val_fold]
 
@@ -67,7 +59,15 @@ def create_dataloaders(
     val_dataset: AudioDataset,
     **kwargs: Dict[str, Any]
 ) -> tuple[DataLoader, DataLoader]:
-    train_loader = DataLoader(train_dataset, **kwargs.get("train_args", {}))
+    train_sampler = torch.utils.data.WeightedRandomSampler(
+        train_dataset.df['weight'], len(train_dataset)
+    )
+    train_loader = DataLoader(
+        train_dataset,
+        sampler=train_sampler,
+        **kwargs.get("train_args", {})
+    )
+
     val_loader = DataLoader(val_dataset, **kwargs.get("val_args", {}))
 
     return train_loader, val_loader

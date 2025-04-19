@@ -21,11 +21,12 @@ class AudioForward(nn.Module):
         specs, targets = batch
 
         output = runner.model(specs)
-        output["predictions"] = torch.sigmoid(output["logits"]) #torch.argmax(output["logits"], dim=-1)
+        output["predictions"] = torch.softmax(output["logits"], dim=-1) #torch.argmax(output["logits"], dim=-1)
 
         inputs = {
             "specs": specs,
             "targets": targets,
+            "targets_1d": targets.argmax(dim=-1),
         }
 
         losses = {
@@ -77,15 +78,15 @@ class LitTrainer(lightning.LightningModule):
         losses, inputs, outputs = self._forward(self, batch, epoch=self.current_epoch)
         model_time = time.time() - start_time
 
-        if self._train_metrics is not None:
-            self._train_metrics.update(
-                outputs[self._metric_output_key],
-                inputs[self._metric_input_key].long()
-            )
+        # if self._train_metrics is not None:
+        #     self._train_metrics.update(
+        #         outputs[self._metric_output_key],
+        #         inputs[self._metric_input_key]
+        #     )
 
         for k, v in losses.items():
             self.log(
-                "train_" + k,
+                "train/" + k,
                 v,
                 on_step=True,
                 on_epoch=False,
@@ -95,7 +96,7 @@ class LitTrainer(lightning.LightningModule):
                 sync_dist=True,
             )
             self.log(
-                "train_avg_" + k,
+                "train/avg_" + k,
                 v,
                 on_step=False,
                 on_epoch=True,
@@ -105,7 +106,7 @@ class LitTrainer(lightning.LightningModule):
                 sync_dist=True,
             )
         self.log(
-            "train_model_time",
+            "train/model_time",
             model_time,
             on_step=True,
             on_epoch=False,
@@ -115,7 +116,7 @@ class LitTrainer(lightning.LightningModule):
             sync_dist=True,
         )
         self.log(
-            "train_avg_model_time",
+            "train/avg_model_time",
             model_time,
             on_step=False,
             on_epoch=True,
@@ -135,12 +136,12 @@ class LitTrainer(lightning.LightningModule):
         if self._val_metrics is not None:
             self._val_metrics.update(
                 outputs[self._metric_output_key],
-                inputs[self._metric_input_key].long() # long for hard labels
+                inputs[self._metric_input_key]
             )
 
         for k, v in losses.items():
             self.log(
-                "valid_" + k,
+                "valid/" + k,
                 v,
                 on_step=True,
                 on_epoch=False,
@@ -150,7 +151,7 @@ class LitTrainer(lightning.LightningModule):
                 sync_dist=True,
             )
             self.log(
-                "valid_avg_" + k,
+                "valid/avg_" + k,
                 v,
                 on_step=False,
                 on_epoch=True,
@@ -160,7 +161,7 @@ class LitTrainer(lightning.LightningModule):
                 sync_dist=True,
             )
         self.log(
-            "valid_model_time",
+            "valid/model_time",
             model_time,
             on_step=True,
             on_epoch=False,
@@ -170,7 +171,7 @@ class LitTrainer(lightning.LightningModule):
             sync_dist=True,
         )
         self.log(
-            "valid_avg_model_time",
+            "valid/avg_model_time",
             model_time,
             on_step=False,
             on_epoch=True,
@@ -183,20 +184,22 @@ class LitTrainer(lightning.LightningModule):
         return self._aggregate_outputs(losses, inputs, outputs)
 
     def on_train_epoch_end(self):
-        metric_values = self._train_metrics.compute()
-        self.log_dict(
-            {"train_"+k:v for k,v in metric_values.items()},
-            on_step=False,
-            on_epoch=True,
-            prog_bar=False,
-            sync_dist=True,
-        )
-        self._train_metrics.reset()
+        # print("on_train_epoch_end")
+        # metric_values = self._train_metrics.compute()
+        # self.log_dict(
+        #     {"train/"+k:v for k,v in metric_values.items()},
+        #     on_step=False,
+        #     on_epoch=True,
+        #     prog_bar=False,
+        #     sync_dist=True,
+        # )
+        # self._train_metrics.reset()
+        pass
 
     def on_validation_epoch_end(self):
         metric_values = self._val_metrics.compute()
         self.log_dict(
-            {"valid_"+k:v for k,v in metric_values.items()},
+            {"valid/"+k:v for k,v in metric_values.items()},
             on_step=False,
             on_epoch=True,
             prog_bar=False,
