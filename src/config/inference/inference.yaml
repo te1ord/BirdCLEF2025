@@ -1,0 +1,11 @@
+checkpoint_path: "logdirs/efficientnet_b0__weights_power-0.5-1st/best.ckpt"
+batch_size: 128
+
+# inference paths
+# local
+train_audio_path: "data/birdclef2025/train_audio" 
+test_soundscape_path: "data/birdclef2025/train_soundscapes"
+# kaggle
+# train_audio_path: "/kaggle/input/birdclef-2025/train_audio/"
+# test_soundscape_path: "/kaggle/input/birdclef-2025/test_soundscapes/"
+

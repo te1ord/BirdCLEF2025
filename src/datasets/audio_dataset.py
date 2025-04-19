@@ -57,6 +57,7 @@ class AudioDataset(torch.utils.data.Dataset):
         return len(self.df)
     
 
+    # TODO Fix labels order
     def _get_target_encoder(self):
         target_encoder = OneHotEncoder()
         target_encoder.fit(

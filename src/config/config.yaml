@@ -10,14 +10,15 @@ defaults:
   - augmentation: augmentation
   - model: model
   - training: training
+  - inference: inference
 
 # Global settings
 seed: 42
 debug: false
-output_dir: outputs
+output_dir: .
 experiment_name: logdirs/efficientnet_b0__weights_power-0.5
 
-device: "cuda"   # or "cpu" if you prefer
+device: "cpu"   # or "cpu" if you prefer
 
 # Logging (if used later)
 wandb:
