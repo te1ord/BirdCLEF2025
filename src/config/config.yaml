@@ -14,9 +14,9 @@ defaults:
 seed: 42
 debug: false
 output_dir: .
-experiment_name: efficientnet_b0_soft_ce_softmax
+experiment_name: efficientnet_b0_hard_bce_sigmoid
 
-device: "cpu"   
+device: "cpu"
 
 
 wandb:

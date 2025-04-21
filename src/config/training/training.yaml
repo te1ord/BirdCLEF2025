@@ -7,8 +7,8 @@ trainer:
   # val_check_interval: 4 # by epochs if commented out 
 
 forward:
-  loss_function: ce # bce # ce
-  output_key: logits
+  loss_function: bce # bce # ce
+  output_key: sigmoid_predictions # logits # softmax_predictions # sigmoid_predictions
   input_key: targets
 
   batch_key: specs
@@ -17,7 +17,7 @@ forward:
 # hard_labels + sigmoid + BCE
 
 metrics:
-  output_key: softmax_predictions # softmax_predictions # sigmoid_predictions
+  output_key: sigmoid_predictions # softmax_predictions # sigmoid_predictions
   input_key: targets_1d  
   
 

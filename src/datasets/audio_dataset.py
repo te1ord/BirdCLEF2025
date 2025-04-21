@@ -25,9 +25,9 @@ class AudioDataset(torch.utils.data.Dataset):
         mixup_audio: bool,
         is_train: bool,
         mixup_params: Dict,
-        cache_samples: bool,
         audio_transforms: Optional[Compose],
-        
+        use_cache: bool,
+        cache_n_samples: Optional[int] = 0,
     ):
         self.df = input_df.reset_index(drop=True)
 
@@ -48,10 +48,10 @@ class AudioDataset(torch.utils.data.Dataset):
         self.mixup_params = mixup_params
 
         self.is_train = is_train
-        self.cache_samples = cache_samples
-        
-        if self.cache_samples:
-            self._cache_samples()
+
+        self.use_cache = use_cache
+        if self.use_cache:
+            self._cache_samples(top_n=cache_n_samples)
 
 
     def __len__(self):
@@ -68,14 +68,20 @@ class AudioDataset(torch.utils.data.Dataset):
         return target_encoder
     
 
-    def _cache_samples(self):
-        def load_wave(idx):
-            return self._get_wave(idx)
+    def _cache_samples(self, top_n: int):
+        def load_wave(args):
+            idx, cache = args
+            return self._get_wave(idx) if cache else None
+
+        # Cache only the most important samples
+        idx_to_cache = self.df['weight'].sort_values(ascending=False).head(top_n).index
+        should_cache = self.df.index.isin(idx_to_cache)
+        args = list(zip(self.df.index, should_cache))
 
         self.df['wave'] = None
         with ThreadPoolExecutor() as executor:
             self.df['wave'] = list(tqdm(
-                executor.map(load_wave, range(len(self.df))),
+                executor.map(load_wave, args),
                 total=len(self.df),
                 desc="Caching audio samples"
             ))
@@ -141,14 +147,16 @@ class AudioDataset(torch.utils.data.Dataset):
         assert sr == self.sample_rate, f"Expected sample rate {self.sample_rate}, got {sr}"
 
         # We know that all samples contain only one channel
-        assert len(wave.shape) == 1, "Expected one channel audio."
+        assert len(wave.shape) == 1, f"Expected one channel audio, got wave.shape={wave.shape}."
 
         return wave
     
 
     def _get_sample(self, idx: int):
-        if self.cache_samples:
+        if self.use_cache:
             wave = self.df['wave'].iloc[idx]
+            if wave is None:
+                wave = self._get_wave(idx)
         else:
             wave = self._get_wave(idx)
 

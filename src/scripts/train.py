@@ -56,7 +56,7 @@ def main(cfg: DictConfig):
 
     model = SpecCNNClassifier(
         **cfg.model,
-        spec_augment_config=dict(cfg.augmentation.spectrogram) if cfg.augmentation.spectrogram else None ,
+        spec_augment_config=dict(cfg.augmentation.spectrogram) if hasattr(cfg.augmentation, "spectrogram") else None ,
     )
 
     optimizer = torch.optim.AdamW(
