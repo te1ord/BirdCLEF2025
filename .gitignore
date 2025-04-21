@@ -6,5 +6,11 @@ hydra_logs
 test_augmentations_images
 data/birdclef2025
 data/kaggle_datasets/birdclef2025_code/main_folder.zip
+data/kaggle_datasets/birdclef2025_modelslea
 logdirs/
+wandb/
 submission.csv
+data/kaggle_datasets/birdclef2025_models/
+kaggle/update_models.sh
+kaggle/update_models_kg.sh
+notebooks/cv_split.csv

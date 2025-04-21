@@ -32,7 +32,7 @@ def create_datasets(
 ) -> tuple[AudioDataset, AudioDataset]:
 
     # TODO: write it somehow different
-    target_col = kwargs.get('target_col', 'primary_label')
+    target_col = kwargs['train_args']['target_col']
     class_weights = (df[target_col].value_counts() / df[target_col].shape[0]) ** (-0.5)
     df['weight'] = df[target_col].apply(lambda x: class_weights[x])
 
@@ -42,13 +42,16 @@ def create_datasets(
     train_dataset = prepare_data(
         df=train_df,
         audio_dir=audio_dir,
-        **kwargs.get("train_args", {})
+        **kwargs.get("train_args", {}),
+        audio_transforms = kwargs['audio_transforms']
+
     )
 
     val_dataset = prepare_data(
         df=val_df,
         audio_dir=audio_dir,
-        **kwargs.get("val_args", {})
+        **kwargs.get("val_args", {}),
+        audio_transforms = None
     )
 
     return train_dataset, val_dataset

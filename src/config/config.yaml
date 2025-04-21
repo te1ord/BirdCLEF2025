@@ -1,7 +1,6 @@
 hydra:
   run:
-    # for augmentations runs
-    dir: "../../hydra_logs/augmentations"
+    dir: "../../hydra_logs"
   output_subdir: ${now:%Y-%m-%d_%H-%M-%S}
 
 defaults:
@@ -12,22 +11,28 @@ defaults:
   - training: training
   - inference: inference
 
-# Global settings
 seed: 42
 debug: false
 output_dir: .
-experiment_name: logdirs/efficientnet_b0__weights_power-0.5
+experiment_name: efficientnet_b0_soft_ce_softmax
 
-device: "cpu"   # or "cpu" if you prefer
+device: "cpu"   
 
-# Logging (if used later)
+
 wandb:
   project: audio-classification
   entity: 'BashHav'
   name: ${experiment_name}
-  tags: []
+  log_model: all
   
 callbacks:
+  # checkpoint_dir: logdirs/${experiment_name}/checkpoints
+
   n_checkpoints_to_save: 3
   metric_mode: max
   main_metric: valid/MulticlassAUROC
+
+  save_last: True
+  auto_insert_metric_name: True
+  save_weights_only: True
+  save_on_train_epoch_end: True

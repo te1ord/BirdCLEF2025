@@ -16,11 +16,11 @@ class Inference:
         self,
         model_path: str,
         class_labels: List[str],
-        sample_rate: int = 32000,
-        target_duration: float = 5.0,
-        device: str = "cuda",
-        batch_size: int = 128,
-        model_config: Optional[dict] = None,
+        sample_rate: int,
+        target_duration: float,
+        device: str,
+        batch_size: int,
+        model_config: Optional[dict],
     ):
         self.model_path = model_path
         self.class_labels = class_labels
@@ -95,6 +95,8 @@ class Inference:
             output = self.model(batch_tensor)
             logits = output["logits"]
             scores = torch.sigmoid(logits).cpu().numpy()
+            #torch.softmax(logits, dim=-1).cpu().numpy()
+            
         
         predictions = pd.DataFrame(columns=['row_id'] + self.class_labels)
         

@@ -17,16 +17,17 @@ class AudioDataset(torch.utils.data.Dataset):
     def __init__(
         self,
         input_df: pd.DataFrame,
-        filenpath_col: str = "filepath",
-        target_col: str = "target",
-        sample_rate: int = 32000,
-        target_duration: float = 5.,
-        normalize_audio: bool = True,
-        mixup_audio: bool = True,
-        is_train: bool = True,
-        mixup_params: Optional[Dict] = {"prob": 0.5, "alpha": 1.0},
-        audio_transforms: Optional[Compose] = None,
-        cache_samples: bool = False,
+        filenpath_col: str,
+        target_col: str,
+        sample_rate: int,
+        target_duration: float,
+        normalize_audio: bool,
+        mixup_audio: bool,
+        is_train: bool,
+        mixup_params: Dict,
+        cache_samples: bool,
+        audio_transforms: Optional[Compose],
+        
     ):
         self.df = input_df.reset_index(drop=True)
 
@@ -134,6 +135,8 @@ class AudioDataset(torch.utils.data.Dataset):
         filepath = self.df[self.filenpath_col].iloc[idx]
         wave, sr = librosa.load(filepath, sr=None)
         
+        # wave = wave.astype(np.float32)
+
         # Ensure correct sample rate
         assert sr == self.sample_rate, f"Expected sample rate {self.sample_rate}, got {sr}"
 
@@ -167,11 +170,13 @@ class AudioDataset(torch.utils.data.Dataset):
             sec_idx = self._get_mixup_idx()
             sec_wave = self._get_sample(sec_idx)
 
-            wave = weights @ np.array([wave, sec_wave])
+            wave = weights @ np.array([wave, sec_wave]) 
             target = self._prepare_target(idx, sec_idx)
 
         else:
             target = self._prepare_target(idx)
+
+        wave = wave.astype(np.float32) # convert to float32 for audiomentations
 
         # Apply audio augmentations if in is_train mode
         if self.audio_transforms is not None and self.is_train:

@@ -1,14 +1,15 @@
-# Model architecture
+# architecture
 backbone: tf_efficientnet_b0.in1k
 pretrained: true
 
-# Model parameters
+# parameters
 device: cpu
 n_classes: 206
 classifier_dropout: 0.5
 top_db: 80
 
-# Spectrogram parameters
+timm_kwargs: {}
+# spectrogram parameters
 spec_params:
   sample_rate: ${data.dataset_args.train_args.sample_rate}
   n_mels: 128

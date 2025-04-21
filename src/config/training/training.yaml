@@ -1,40 +1,27 @@
-# Training parameters
 
-# trainer
 trainer:
   precision_mode: 16-mixed  # or 32-true
   train_strategy: auto
   n_epochs: 20
-  log_every_n_steps: 20
-#  val_check_interval: 50
+  log_every_n_steps: 4
+  # val_check_interval: 4 # by epochs if commented out 
 
-# Optimizer
-optimizer:
-  name: AdamW
-  params:
-    lr: 5e-4
-    weight_decay: 1e-5
+forward:
+  loss_function: ce # bce # ce
+  output_key: logits
+  input_key: targets
 
-# Scheduler
-scheduler:
-  name: CosineAnnealingLR
-  params:
-    # T_max: ${training.trainer.n_epochs} * (total_samples / batch_size) # set dynamically in train.py 
-    eta_min: 1e-6
-  config:
-    interval: step
-      
+  batch_key: specs
 
-# Loss function
-criterion: CrossEntropyLoss
+# soft_labels + softmax + CE 
+# hard_labels + sigmoid + BCE
 
-# Metrics
 metrics:
+  output_key: softmax_predictions # softmax_predictions # sigmoid_predictions
+  input_key: targets_1d  
+  
+
   names:
-    # - accuracy
-    # - recall
-    # - precision
-    # - f1
     - rocauc
   params:
     average: macro
@@ -42,5 +29,22 @@ metrics:
     # num_labels: ${model.n_classes}
     task: multiclass
     num_classes: ${model.n_classes}
+
+
+
+optimizer:
+  name: AdamW
+  params:
+    lr: 5e-4
+    weight_decay: 1e-5
+
+
+scheduler:
+  name: CosineAnnealingLR
+  params:
+    eta_min: 1e-6
+  config:
+    interval: step
+      
 
 

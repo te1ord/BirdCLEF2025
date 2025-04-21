@@ -1,4 +1,4 @@
-checkpoint_path: "logdirs/efficientnet_b0__weights_power-0.5-1st/best.ckpt"
+checkpoint_path: "logdirs/checkpoints/efficientnet_b0_soft_ce_softmax/last.ckpt"
 batch_size: 128
 
 # inference paths

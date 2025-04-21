@@ -9,8 +9,8 @@ class AudioForward(nn.Module):
     def __init__(
         self,
         loss_function,
-        output_key="logits",
-        input_key="targets",
+        output_key,
+        input_key,
     ):
         super().__init__()
         self.loss_function = loss_function
@@ -21,7 +21,8 @@ class AudioForward(nn.Module):
         specs, targets = batch
 
         output = runner.model(specs)
-        output["predictions"] = torch.softmax(output["logits"], dim=-1) #torch.argmax(output["logits"], dim=-1)
+        output["sigmoid_predictions"] = torch.sigmoid(output["logits"])
+        output["softmax_predictions"] = torch.softmax(output["logits"], dim=-1) 
 
         inputs = {
             "specs": specs,
@@ -51,7 +52,7 @@ class LitTrainer(lightning.LightningModule):
         metric_input_key,
         metric_output_key,
         val_metrics,
-        train_metrics=None,
+        train_metrics,
     ):
         super().__init__()
 

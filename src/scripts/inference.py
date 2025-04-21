@@ -28,6 +28,8 @@ def main(cfg: DictConfig) -> None:
         "spec_params": dict(cfg.model.spec_params),
         "normalize_config": dict(cfg.model.normalize_config),
         "pretrained": cfg.model.pretrained,
+        "spec_augment_config": None,
+        "timm_kwargs": cfg.model.timm_kwargs
     }
     
     inference = Inference(

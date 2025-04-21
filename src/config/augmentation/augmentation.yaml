@@ -1,5 +1,6 @@
 # Audio augmentations
 audio:
+  # just comment out to run without audio augmentatinos
   audio_transforms:
     - name: "gaussian_noise"
       params:
@@ -19,15 +20,10 @@ audio:
         max_semitones: 4
         p: 0.5
   
-  mixup_audio: True
-  mixup_params:
-    prob: 0.5
-    alpha: 0.5
-    hard_target: True
-
 
 # Spectrogram augmentations
-spectrogram:
+# just comment out to run without spec augmentatinos
+spectrogram: 
   freq_mask:
     mask_max_length: 20
     mask_max_masks: 5

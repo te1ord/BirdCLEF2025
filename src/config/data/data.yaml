@@ -5,30 +5,41 @@ paths:
 
 # Audio processing
 dataset_args:
+
   val_fold: 0
+  
   train_args:
-    filenpath_col: "filename"
     target_col: "primary_label"
+    filenpath_col: "filename"
     sample_rate: 32000
     target_duration: 5.0  # seconds
-    normalize_audio: true
-    is_train: true
-    cache_samples: false
+    normalize_audio: True
+    is_train: True
+    cache_samples: False
+    
+    # mixup
+    mixup_audio: True
     mixup_params:
       prob: 0.5
       alpha: 0.5
       hard_target: False
-    mixup_audio: true
+    
 
   val_args:
-    filenpath_col: "filename"
     target_col: "primary_label"
+    filenpath_col: "filename"
     sample_rate: 32000
     target_duration: 5.0  # seconds
-    normalize_audio: true
-    is_train: false
-    cache_samples: false
-    mixup_audio: false
+    normalize_audio: True
+    is_train: False
+    cache_samples: False
+    
+    # mixup
+    mixup_audio: False
+    mixup_params:
+      prob: 0.5
+      alpha: 0.5
+      hard_target: False
   
 
 dataloader_args:

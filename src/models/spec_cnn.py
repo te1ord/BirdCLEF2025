@@ -11,23 +11,13 @@ class SpecCNNClassifier(nn.Module):
         backbone: str,
         device: str,
         n_classes: int,
-        classifier_dropout: float = 0.5,
-        spec_params: Dict[str, Any] = {
-            "sample_rate": 32000,
-            "n_mels": 128,
-            "f_min": 20,
-            "n_fft": 1024,
-            "hop_length": 512,
-            "normalized": True,
-        },
-        top_db: float = 80.0,
-        normalize_config: Dict[str, bool] = {
-            "normalize_standart": True,
-            "normalize_minmax": True,
-        },
-        pretrained: bool = True,
-        timm_kwargs: Optional[Dict] = None,
-        spec_augment_config: Optional[Dict[str, Any]] = None,
+        classifier_dropout: float,
+        spec_params: Dict[str, Any],
+        top_db: float,
+        normalize_config: Dict[str, bool],
+        pretrained: bool,
+        timm_kwargs: Optional[Dict],
+        spec_augment_config: Optional[Dict[str, Any]],
     ):
         super().__init__()
         timm_kwargs = {} if timm_kwargs is None else timm_kwargs
