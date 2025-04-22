@@ -2,13 +2,13 @@
 trainer:
   precision_mode: 16-mixed  # or 32-true
   train_strategy: auto
-  n_epochs: 20
+  n_epochs: 10
   log_every_n_steps: 4
   # val_check_interval: 4 # by epochs if commented out 
 
 forward:
   loss_function: bce # bce # ce
-  output_key: sigmoid_predictions # logits # softmax_predictions # sigmoid_predictions
+  output_key: logits # logits # softmax_predictions # sigmoid_predictions
   input_key: targets
 
   batch_key: specs

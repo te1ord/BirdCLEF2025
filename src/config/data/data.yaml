@@ -15,8 +15,8 @@ dataset_args:
     target_duration: 5.0  # seconds
     normalize_audio: True
     is_train: True
-    use_cache: True
-    cache_n_samples: 6000
+    use_cache: False
+    cache_n_samples: 5000
     
     # mixup
     mixup_audio: True

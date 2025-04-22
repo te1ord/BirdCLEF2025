@@ -14,7 +14,7 @@ defaults:
 seed: 42
 debug: false
 output_dir: .
-experiment_name: efficientnet_b0_hard_bce_sigmoid
+experiment_name: efficientnet_b0_hard_bce_sigmoid_logits_no_audio_augments
 
 device: "cpu"
 
