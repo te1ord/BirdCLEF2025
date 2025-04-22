@@ -1,10 +1,8 @@
 {
-    "title": "BirdCLEF 2025 Code",
-    "id": "ivanbashtovyi/birdclef2025-models",
-    "licenses": [
-      {
-        "name": "CC0-1.0"
-      }
-    ]
-  }
-  
+        "title": "BirdCLEF 2025 Models",
+        "id": "ivanbashtovyi/birdclef2025-models",
+        "licenses": [{"name": "CC0-1.0"}],
+        "keywords": ["audio", "machine-learning", "birds", "classification"],
+        "isPrivate": false,
+        "description": "Models for BirdCLEF 2025 competition"
+    }

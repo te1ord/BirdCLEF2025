@@ -1,11 +1,19 @@
 #!/usr/bin/env bash
+
+# Check if required arguments are provided
+if [ "$#" -ne 2 ]; then
+    echo "Usage: $0 <RUN_ID> <VERSION>"
+    echo "Example: $0 hrui1936 v9"
+    exit 1
+fi
+
 # ─── CONFIG ────────────────────────────────────────────────────────────────
 # Weights & Biases config
 ENTITY="BashHav"                      
 PROJECT="audio-classification"        
 
-RUN_ID="tjpu9gbf"  
-VERSION="v9"                                  # replace with the run ID
+RUN_ID="$1"
+VERSION="$2"
 ARTIFACT="model-${RUN_ID}:${VERSION}"         # replace artifact name:version
                    
 
