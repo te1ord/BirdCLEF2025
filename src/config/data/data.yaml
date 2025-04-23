@@ -7,6 +7,9 @@ paths:
 dataset_args:
 
   val_fold: 0
+
+  # dataloader sampler weights temperature - bigger --> more weights to low-frequency classes
+  sampling_temperature: 0.5
   
   train_args:
     target_col: "primary_label"

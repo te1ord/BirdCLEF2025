@@ -33,7 +33,7 @@ def create_datasets(
 
     # TODO: write it somehow different
     target_col = kwargs['train_args']['target_col']
-    class_weights = (df[target_col].value_counts() / df[target_col].shape[0]) ** (-0.5)
+    class_weights = (df[target_col].value_counts() / df[target_col].shape[0]) ** (-kwargs['sampling_temperature'])
     df['weight'] = df[target_col].apply(lambda x: class_weights[x])
 
     train_df = df[df["fold"] != val_fold]
