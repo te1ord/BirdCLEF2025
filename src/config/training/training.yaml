@@ -6,14 +6,25 @@ trainer:
   log_every_n_steps: 4
   # val_check_interval: 4 # by epochs if commented out 
 
-forward:
-  loss_function: ce # bce # ce
+loss:
+  loss_function: focalbce # bce # ce # focal # focalbce
+  
+  # focal config
+  focal_alpha: 0.25
+  focal_gamma: 2
+  focal_reduction: mean
+
+  # focal bce config
+  bce_weight: 1.0
+  focal_weight: 1.0
+
+  # balancing (bce/ce)
   use_class_weights: True
   class_weights_temperature: 0.5
 
+forward:
   output_key: logits # logits # softmax_predictions # sigmoid_predictions
   input_key: targets
-
   batch_key: specs
 
 # soft_labels + softmax + CE 

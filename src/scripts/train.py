@@ -6,6 +6,7 @@ import pandas as pd
 from audiomentations import Compose
 from src.models.spec_cnn import SpecCNNClassifier
 from src.utils.data import create_datasets, create_dataloaders
+from src.utils.loss import loss_kwargs_manager
 from src.trainers import AudioForward, LitTrainer
 from src.augmentations.audio_augmentations import KEY2AUDIO_AUGMENTATION
 
@@ -73,18 +74,14 @@ def main(cfg: DictConfig):
     )
 
     
-    if cfg.training.forward.use_class_weights:
-        scaled_class_weights = class_weights.pow(-cfg.training.forward.class_weights_temperature)
-        loss_weight_tensor = torch.tensor(
-        [scaled_class_weights[c] for c in sorted(scaled_class_weights.index)], dtype=torch.float
-        )
-    else:
-        loss_weight_tensor = None
+    loss_args = loss_kwargs_manager(cfg.training.loss, class_weights)
+
+    print(loss_args)
     
     lightning_model = LitTrainer(
         model=model,
         forward=AudioForward(
-            loss_function=KEY2LOSSES[cfg.training.forward.loss_function](weight=loss_weight_tensor),
+            loss_function=KEY2LOSSES[cfg.training.loss.loss_function](**loss_args),
             output_key=cfg.training.forward.output_key,
             input_key=cfg.training.forward.input_key,
         ),
