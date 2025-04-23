@@ -33,8 +33,11 @@ def create_datasets(
 
     # TODO: write it somehow different
     target_col = kwargs['train_args']['target_col']
-    class_weights = (df[target_col].value_counts() / df[target_col].shape[0]) ** (-kwargs['sampling_temperature'])
-    df['weight'] = df[target_col].apply(lambda x: class_weights[x])
+
+    class_freq = df[target_col].value_counts(normalize=True)
+    sampling_weights = class_freq.pow(-kwargs['sampling_temperature'])
+
+    df['weight'] = df[target_col].apply(lambda x: sampling_weights[x])
 
     train_df = df[df["fold"] != val_fold]
     val_df = df[df["fold"] == val_fold]
@@ -54,7 +57,7 @@ def create_datasets(
         audio_transforms = None
     )
 
-    return train_dataset, val_dataset
+    return train_dataset, val_dataset, class_freq
 
 
 def create_dataloaders(

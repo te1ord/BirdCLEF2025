@@ -40,12 +40,13 @@ def main(cfg: DictConfig):
         for name in cfg.training.metrics.names
     ]
 
-    train_dataset, val_dataset = create_datasets(
+    train_dataset, val_dataset, class_weights = create_datasets(
         df=df,
         audio_dir=cfg.data.paths.audio_dir,
         **cfg.data.dataset_args,
         audio_transforms=Compose(audio_transforms),
     )
+
 
     train_loader, val_loader = create_dataloaders(
         train_dataset=train_dataset,
@@ -71,10 +72,19 @@ def main(cfg: DictConfig):
         **cfg.training.scheduler.params
     )
 
+    
+    if cfg.training.forward.use_class_weights:
+        scaled_class_weights = class_weights.pow(-cfg.training.forward.class_weights_temperature)
+        loss_weight_tensor = torch.tensor(
+        [scaled_class_weights[c] for c in sorted(scaled_class_weights.index)], dtype=torch.float
+        )
+    else:
+        loss_weight_tensor = None
+    
     lightning_model = LitTrainer(
         model=model,
         forward=AudioForward(
-            loss_function=KEY2LOSSES[cfg.training.forward.loss_function](),
+            loss_function=KEY2LOSSES[cfg.training.forward.loss_function](weight=loss_weight_tensor),
             output_key=cfg.training.forward.output_key,
             input_key=cfg.training.forward.input_key,
         ),

@@ -7,7 +7,10 @@ trainer:
   # val_check_interval: 4 # by epochs if commented out 
 
 forward:
-  loss_function: bce # bce # ce
+  loss_function: ce # bce # ce
+  use_class_weights: True
+  class_weights_temperature: 0.5
+
   output_key: logits # logits # softmax_predictions # sigmoid_predictions
   input_key: targets
 
