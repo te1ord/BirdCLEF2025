@@ -20,7 +20,7 @@ class SpecCNNClassifier(nn.Module):
         spec_augment_config: Optional[Dict[str, Any]],
     ):
         super().__init__()
-        timm_kwargs = {} if timm_kwargs is None else timm_kwargs
+        timm_kwargs = {} if timm_kwargs == "None" else timm_kwargs
         self.device = device
 
         self.spectogram_extractor = nn.Sequential(
