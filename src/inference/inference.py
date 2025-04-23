@@ -48,9 +48,13 @@ class Inference:
         if isinstance(checkpoint, dict) and 'state_dict' in checkpoint:
             state_dict = checkpoint['state_dict']
             state_dict = {k.replace('model.', ''): v for k, v in state_dict.items()}
-            model.load_state_dict(state_dict)
+            
+            # tmp fix of loss_func in state dict
+            state_dict = {k: v for k, v in state_dict.items() if "loss_function" not in k}
+
+            model.load_state_dict(state_dict, strict=False)
         else:
-            model.load_state_dict(checkpoint)
+            model.load_state_dict(checkpoint, strict=False)
             
         model = model.to(self.device)
         return model
