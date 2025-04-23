@@ -27,6 +27,7 @@ class AudioDataset(torch.utils.data.Dataset):
         mixup_params: Dict,
         audio_transforms: Optional[Compose],
         use_cache: bool,
+        wave_piece: str,
         cache_n_samples: Optional[int] = 0,
     ):
         self.df = input_df.reset_index(drop=True)
@@ -52,6 +53,9 @@ class AudioDataset(torch.utils.data.Dataset):
         self.use_cache = use_cache
         if self.use_cache:
             self._cache_samples(top_n=cache_n_samples)
+
+        self.wave_piece = wave_piece
+        assert self.wave_piece in ('center','random')
 
 
     def __len__(self):
@@ -122,15 +126,27 @@ class AudioDataset(torch.utils.data.Dataset):
         # TODO: consider more fancy subsample selection
 
         sample_len = len(sample)
+
         # Extract center 5 seconds
         if sample_len < self.target_sample_count:
             # Pad if too short
             sample_piece = np.pad(sample, (0, self.target_sample_count - sample_len), mode='constant')
+        
         else:
-            # Take center if too long
-            start_idx = max(0, int(sample_len / 2 - self.target_sample_count / 2))
-            end_idx = min(sample_len, start_idx + self.target_sample_count)
-            sample_piece = sample[start_idx:end_idx]
+
+            if self.wave_piece == 'center':
+                # Take center if too long
+                start_idx = max(0, int(sample_len / 2 - self.target_sample_count / 2))
+                end_idx = min(sample_len, start_idx + self.target_sample_count)
+                sample_piece = sample[start_idx:end_idx]
+            elif self.wave_piece == 'random':
+                # pick a random start so that [start:start+target] is fully inside
+                max_start = sample_len - self.target_sample_count
+                start_idx = np.random.randint(0, max_start + 1)
+                end_idx = start_idx + self.target_sample_count
+                sample_piece = sample[start_idx:end_idx]
+            else:
+                raise ValueError(f"Invalid wave_piece: {self.wave_piece!r}")
 
         return sample_piece
     

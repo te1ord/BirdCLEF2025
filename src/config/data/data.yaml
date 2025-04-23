@@ -15,15 +15,20 @@ dataset_args:
     target_duration: 5.0  # seconds
     normalize_audio: True
     is_train: True
-    use_cache: False
+    
+    # dataset caching
+    use_cache: True
     cache_n_samples: 5000
+
+    # sample piece selection
+    wave_piece: random # center # random
     
     # mixup
     mixup_audio: True
     mixup_params:
       prob: 0.5
       alpha: 0.5
-      hard_target: True
+      hard_target: False
     
 
   val_args:
@@ -33,8 +38,13 @@ dataset_args:
     target_duration: 5.0  # seconds
     normalize_audio: True
     is_train: False
+    
+    # dataset caching
     use_cache: False
     
+    # sample piece selection
+    wave_piece: random # center # random
+
     # mixup
     mixup_audio: False
     mixup_params:
