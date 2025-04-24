@@ -54,7 +54,7 @@ print(slug)
 EOF
 )
 
-DEST_DIR="${BASE_DIR}/${DATASET_NAME}/${MAIN_FOLDER}/${RUN_ID}_${RUN_NAME}"
+DEST_DIR="${BASE_DIR}/${DATASET_NAME}/${MAIN_FOLDER}/${RUN_ID}_${VERSION}_${RUN_NAME}"
 
 # # ─── 2) PREP ───────────────────────────────────────────────────────────────
 # echo ">>> Preparing directory structure"
