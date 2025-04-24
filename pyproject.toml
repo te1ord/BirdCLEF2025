@@ -7,7 +7,7 @@ readme = "README.md"
 packages = [{include = "src"}]
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.13"
+python = ">=3.10,<3.13"
 torch = "^2.6.0"
 torchaudio = "^2.6.0"
 audiomentations = "^0.40.0"
@@ -20,6 +20,7 @@ matplotlib = "<3.10"
 ipykernel = "^6.29.5"
 wandb = "^0.19.9"
 kaggle = "^1.7.4.2"
+onnx = "^1.17.0"
 
 
 [build-system]
