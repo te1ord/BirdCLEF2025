@@ -13,7 +13,7 @@ calibration_dir: "data/birdclef2025/train_soundscapes"
 
 quantization:
 
-  quantization_type: static  # none | dynamic | static
+  quantization_type: onnx  # none | dynamic | static | onnx
   per_channel: True
   calibration_data_path: "data/birdclef2025/train_soundscapes"
   n_calibration_samples: 200

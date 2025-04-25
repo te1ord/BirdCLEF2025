@@ -120,8 +120,12 @@ class Inference:
         quant_pre_process(onnx_fp, optimized_fp)
         quant_source = optimized_fp
 
-        quant_fp = onnx_fp.replace(".onnx", "_quant.onnx")
-        if self.quantization_type == "dynamic":
+        if self.quantization_type == "onnx":
+            quant_fp = onnx_fp  
+        
+        elif self.quantization_type == "dynamic":
+            
+            quant_fp = onnx_fp.replace(".onnx", "_quant.onnx")
             quantize_dynamic(
                 quant_source, quant_fp,
                 weight_type=QuantType.QUInt8,
@@ -131,6 +135,8 @@ class Inference:
         elif self.quantization_type == "static":
             if not self.calibration_data_path:
                 raise ValueError("Static quantization requires 'calibration_data_path' to a folder of audio files.")
+            
+            quant_fp = onnx_fp.replace(".onnx", "_quant.onnx")
             
             # build calibration specs list 
             audio_files = [
