@@ -29,7 +29,7 @@ def main(cfg: DictConfig) -> None:
         "normalize_config": dict(cfg.model.normalize_config),
         "pretrained": cfg.model.pretrained,
         "spec_augment_config": None,
-        "timm_kwargs": cfg.model.timm_kwargs
+        "timm_kwargs": cfg.model.timm_kwargs        
     }
     
     inference = Inference(
@@ -40,6 +40,10 @@ def main(cfg: DictConfig) -> None:
         device=cfg.device,
         batch_size = cfg.inference.batch_size,
         model_config=model_config,
+        quantization_type=cfg.inference.quantization.quantization_type,
+        per_channel=cfg.inference.quantization.per_channel,
+        calibration_data_path=cfg.inference.quantization.calibration_data_path,
+        n_calibration_samples=cfg.inference.quantization.n_calibration_samples
     )
     
     predictions = inference.predict_directory(str(test_soundscape_path))
@@ -56,3 +60,4 @@ def main(cfg: DictConfig) -> None:
 
 if __name__ == "__main__":
     main() 
+    

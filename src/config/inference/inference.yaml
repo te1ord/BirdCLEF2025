@@ -1,11 +1,20 @@
-checkpoint_path: "logdirs/checkpoints/efficientnet_b0_soft_ce_softmax/last.ckpt"
+checkpoint_path: "model.ckpt"
+#"logdirs/checkpoints/efficientnet_b0_soft_ce_softmax/last.ckpt"
 batch_size: 128
 
 # inference paths
 # local
 train_audio_path: "data/birdclef2025/train_audio" 
 test_soundscape_path: "data/birdclef2025/train_soundscapes"
+calibration_dir: "data/birdclef2025/train_soundscapes"
 # kaggle
 # train_audio_path: "/kaggle/input/birdclef-2025/train_audio/"
 # test_soundscape_path: "/kaggle/input/birdclef-2025/test_soundscapes/"
+
+quantization:
+
+  quantization_type: static  # none | dynamic | static
+  per_channel: True
+  calibration_data_path: "data/birdclef2025/train_soundscapes"
+  n_calibration_samples: 200
 
