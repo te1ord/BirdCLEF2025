@@ -18,3 +18,15 @@ quantization:
   calibration_data_path: "data/birdclef2025/train_soundscapes"
   n_calibration_samples: 200
 
+temp_smoothing:
+  use_temp_smoothing: True
+  middle_chunks_weights: {
+    prev: 0.2,
+    curr: 0.6,
+    next: 0.2
+  }
+  edge_chunk_weights: {
+    main: 0.8,
+    neighbor: 0.2
+  }
+

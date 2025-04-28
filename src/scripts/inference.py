@@ -37,13 +37,19 @@ def main(cfg: DictConfig) -> None:
         class_labels=class_labels,
         sample_rate=cfg.data.dataset_args.train_args.sample_rate,
         target_duration=cfg.data.dataset_args.train_args.target_duration,
+        
         device=cfg.device,
         batch_size = cfg.inference.batch_size,
         model_config=model_config,
+        
         quantization_type=cfg.inference.quantization.quantization_type,
         per_channel=cfg.inference.quantization.per_channel,
         calibration_data_path=cfg.inference.quantization.calibration_data_path,
-        n_calibration_samples=cfg.inference.quantization.n_calibration_samples
+        n_calibration_samples=cfg.inference.quantization.n_calibration_samples,
+
+        temporal_smoothing=cfg.inference.temp_smoothing.use_temp_smoothing,
+        middle_chunks_weights=cfg.inference.temp_smoothing.middle_chunks_weights,
+        edge_chunk_weights=cfg.inference.temp_smoothing.edge_chunk_weights,
     )
     
     predictions = inference.predict_directory(str(test_soundscape_path))

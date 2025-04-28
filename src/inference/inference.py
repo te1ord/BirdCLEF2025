@@ -54,7 +54,10 @@ class Inference:
         per_channel: bool = True,
         onnx_dir: Optional[str] = None,
         calibration_data_path: Optional[str] = None,  
-        n_calibration_samples:Optional[int] = None
+        n_calibration_samples:Optional[int] = None,
+        temporal_smoothing: bool = True,
+        middle_chunks_weights: Optional[Dict[str, float]] = None,
+        edge_chunk_weights: Optional[Dict[str, float]] = None
     ):
         self.model_path = model_path
         self.class_labels = class_labels
@@ -69,6 +72,11 @@ class Inference:
         self.per_channel = per_channel
         self.calibration_data_path = calibration_data_path
         self.n_calibration_samples = n_calibration_samples
+
+        
+        self.temporal_smoothing = temporal_smoothing
+        self.middle_chunks_weights = middle_chunks_weights
+        self.edge_chunk_weights = edge_chunk_weights 
 
         self.model = self._load_model().eval()
 
@@ -270,6 +278,39 @@ class Inference:
 
         return predictions
     
+    def _apply_temporal_smoothing(self, predictions: pd.DataFrame) -> pd.DataFrame:
+        """Apply temporal smoothing to predictions using weighted averages of adjacent chunks."""
+        cols = self.class_labels
+        groups = predictions['row_id'].str.rsplit('_', n=1).str[0].values
+        
+        for group in np.unique(groups):
+            sub_group = predictions[group == groups]
+            pred_values = sub_group[cols].values
+            new_predictions = pred_values.copy()
+            
+            # Process middle chunks
+            for i in range(1, pred_values.shape[0]-1):
+                new_predictions[i] = (
+                    pred_values[i-1] * self.middle_chunks_weights['prev'] +
+                    pred_values[i]   * self.middle_chunks_weights['curr'] +
+                    pred_values[i+1] * self.middle_chunks_weights['next']
+                )
+            
+            # Process edge chunks
+            if pred_values.shape[0] > 1:
+                new_predictions[0] = (
+                    pred_values[0] * self.edge_chunk_weights['main'] +
+                    pred_values[1] * self.edge_chunk_weights['neighbor']
+                )
+                new_predictions[-1] = (
+                    pred_values[-1] * self.edge_chunk_weights['main'] +
+                    pred_values[-2] * self.edge_chunk_weights['neighbor']
+                )
+            
+            predictions.loc[group == groups, cols] = new_predictions
+        
+        return predictions
+
     def predict_directory(self, directory_path: str) -> pd.DataFrame:
         """Make predictions for all audio files in a directory."""
         all_predictions = pd.DataFrame(columns=['row_id'] + self.class_labels)
@@ -302,6 +343,10 @@ class Inference:
             preds = self._process_batch(batch)
             all_predictions = pd.concat([all_predictions, preds], 
                                       axis=0, ignore_index=True)
+        
+        #  temporal smoothing
+        if self.temporal_smoothing:
+            all_predictions = self._apply_temporal_smoothing(all_predictions)
         
         for i in self.logger:
             print(i)
