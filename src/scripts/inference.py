@@ -13,13 +13,19 @@ def main(cfg: DictConfig) -> None:
     model_path = Path(cfg.inference.checkpoint_path)
     test_soundscape_path = Path(cfg.inference.test_soundscape_path)
     
-    
     df = pd.read_csv(cfg.data.paths.train_csv)
     class_labels = sorted(df.primary_label.unique())
-    #sorted(os.listdir(cfg.data.train_audio_path))
     
-    print(f"LEN LABELS:{len(class_labels)}")
     
+    inference_config = {
+        'model_path': str(model_path),
+        'device': cfg.inference.device,
+        'batch_size': cfg.inference.batch_size,
+        'class_labels': class_labels,
+        'sample_rate': cfg.data.dataset_args.train_args.sample_rate,
+        'target_duration': cfg.data.dataset_args.train_args.target_duration,
+    }
+
     model_config = {
         "backbone": cfg.model.backbone,
         "n_classes": cfg.model.n_classes,
@@ -31,25 +37,25 @@ def main(cfg: DictConfig) -> None:
         "spec_augment_config": None,
         "timm_kwargs": cfg.model.timm_kwargs        
     }
-    
-    inference = Inference(
-        model_path=str(model_path),
-        class_labels=class_labels,
-        sample_rate=cfg.data.dataset_args.train_args.sample_rate,
-        target_duration=cfg.data.dataset_args.train_args.target_duration,
-        
-        device=cfg.device,
-        batch_size = cfg.inference.batch_size,
-        model_config=model_config,
-        
-        quantization_type=cfg.inference.quantization.quantization_type,
-        per_channel=cfg.inference.quantization.per_channel,
-        calibration_data_path=cfg.inference.quantization.calibration_data_path,
-        n_calibration_samples=cfg.inference.quantization.n_calibration_samples,
 
-        temporal_smoothing=cfg.inference.temp_smoothing.use_temp_smoothing,
-        middle_chunks_weights=cfg.inference.temp_smoothing.middle_chunks_weights,
-        edge_chunk_weights=cfg.inference.temp_smoothing.edge_chunk_weights,
+    quantization_config = {
+        'quantization_type': cfg.inference.quantization.quantization_type,
+        'per_channel': cfg.inference.quantization.per_channel,
+        'calibration_data_path': cfg.inference.quantization.calibration_data_path,
+        'n_calibration_samples': cfg.inference.quantization.n_calibration_samples,
+        'onnx_dir': cfg.inference.quantization.onnx_dir
+
+    }
+    smoothing_config = {
+        'temporal_smoothing_type': cfg.inference.temporal_smoothing.temporal_smoothing_type,
+        'temporal_smoothing_params': cfg.inference.temporal_smoothing.temporal_smoothing_params
+    }
+
+    inference = Inference(
+        inference_cfg = inference_config,
+        model_cfg=model_config,
+        quantization_cfg = quantization_config,
+        smoothing_cfg = smoothing_config
     )
     
     predictions = inference.predict_directory(str(test_soundscape_path))

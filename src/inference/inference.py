@@ -9,6 +9,8 @@ from pathlib import Path
 from tqdm import tqdm
 import gc
 from src.models.spec_cnn import SpecCNNClassifier
+from src.utils.temp_smoother import Smoothing
+from src.utils.quantization import SpectrogramCalibrationDataReader, CNNWrapper
 
 import onnx
 import onnxruntime as ort
@@ -22,66 +24,24 @@ from onnxruntime.quantization import (
 
 from onnxruntime.quantization.shape_inference import quant_pre_process
 
-
-class SpectrogramCalibrationDataReader(CalibrationDataReader):
-    def __init__(self, input_name: str, specs_list: List[np.ndarray]):
-        self.input_name = input_name
-        self.specs_list = specs_list
-        self._iter = iter(self.specs_list)
-
-    def get_next(self) -> Optional[Dict[str, np.ndarray]]:
-        try:
-            specs = next(self._iter)
-            return {self.input_name: specs.astype(np.float32)}
-        except StopIteration:
-            return None
-
-    def rewind(self):
-        self._iter = iter(self.specs_list)
-
-
 class Inference:
     def __init__(
         self,
-        model_path: str,
-        class_labels: List[str],
-        sample_rate: int,
-        target_duration: float,
-        device: str,
-        batch_size: int,
-        model_config: Optional[dict],
-        quantization_type: str = "none",   # "none" | "dynamic" | "static"
-        per_channel: bool = True,
-        onnx_dir: Optional[str] = None,
-        calibration_data_path: Optional[str] = None,  
-        n_calibration_samples:Optional[int] = None,
-        temporal_smoothing: bool = True,
-        middle_chunks_weights: Optional[Dict[str, float]] = None,
-        edge_chunk_weights: Optional[Dict[str, float]] = None
+        inference_cfg,
+        model_cfg,
+        quantization_cfg,
+        smoothing_cfg
+
     ):
-        self.model_path = model_path
-        self.class_labels = class_labels
-        self.sample_rate = sample_rate
-        self.target_duration = target_duration
-        self.device = device
-        self.batch_size = batch_size
-        self.model_config = model_config or {}
-
-        self.onnx_dir = onnx_dir or "."
-        self.quantization_type = quantization_type
-        self.per_channel = per_channel
-        self.calibration_data_path = calibration_data_path
-        self.n_calibration_samples = n_calibration_samples
-
-        
-        self.temporal_smoothing = temporal_smoothing
-        self.middle_chunks_weights = middle_chunks_weights
-        self.edge_chunk_weights = edge_chunk_weights 
+        self.inference_cfg = inference_cfg
+        self.model_cfg = model_cfg
+        self.quantization_cfg = quantization_cfg
+        self.smoothing_cfg = smoothing_cfg
 
         self.model = self._load_model().eval()
 
 
-        if self.quantization_type != "none":
+        if self.quantization_cfg['quantization_type'] != "none":
             self.spectogram_extractor = self.model.spectogram_extractor
             self._export_and_quantize()
             del self.model
@@ -94,28 +54,17 @@ class Inference:
         self.logger = []
 
     def _export_and_quantize(self):
-        # wrapper for the CNN subnet
-        class CNNWrapper(torch.nn.Module):
-            def __init__(self, mdl):
-                super().__init__()
-                self.backbone = mdl.backbone
-                self.pool = mdl.pool
-                self.classifier = mdl.classifier
 
-            def forward(self, specs):
-                emb = self.backbone(specs.unsqueeze(1))[-1]
-                emb = self.pool(emb).reshape(emb.size(0), -1)
-                return self.classifier(emb)
-
-        wrapper = CNNWrapper(self.model).to(self.device).eval()
+        # cnn wrapper to quantize only model (not spec extractor)
+        wrapper = CNNWrapper(self.model).to(self.inference_cfg['device'] ).eval()
 
         # get dummy spec
-        dummy_audio = torch.randn(1, int(self.sample_rate * self.target_duration))
+        dummy_audio = torch.randn(1, int(self.inference_cfg['sample_rate'] * self.inference_cfg['target_duration']))
         with torch.no_grad():
             dummy_spec = self.spectogram_extractor(dummy_audio)
 
         # export to ONNX
-        onnx_fp = os.path.join(self.onnx_dir, "cnn_subnet.onnx")
+        onnx_fp = os.path.join(self.quantization_cfg['onnx_dir'], "cnn_subnet.onnx")
         torch.onnx.export(
             wrapper, (dummy_spec,), onnx_fp,
             input_names=["specs"], output_names=["logits"],
@@ -128,40 +77,40 @@ class Inference:
         quant_pre_process(onnx_fp, optimized_fp)
         quant_source = optimized_fp
 
-        if self.quantization_type == "onnx":
+        if self.quantization_cfg['quantization_type'] == "onnx":
             quant_fp = onnx_fp  
         
-        elif self.quantization_type == "dynamic":
+        elif self.quantization_cfg['quantization_type'] == "dynamic":
             
             quant_fp = onnx_fp.replace(".onnx", "_quant.onnx")
             quantize_dynamic(
                 quant_source, quant_fp,
                 weight_type=QuantType.QUInt8,
-                per_channel=self.per_channel
+                per_channel=self.quantization_cfg['per_channel']
             )
 
-        elif self.quantization_type == "static":
-            if not self.calibration_data_path:
+        elif self.quantization_cfg['quantization_type'] == "static":
+            if not self.quantization_cfg['calibration_data_path']:
                 raise ValueError("Static quantization requires 'calibration_data_path' to a folder of audio files.")
             
             quant_fp = onnx_fp.replace(".onnx", "_quant.onnx")
             
             # build calibration specs list 
             audio_files = [
-                os.path.join(self.calibration_data_path, f)
-                for f in os.listdir(self.calibration_data_path)
+                os.path.join(self.quantization_cfg['calibration_data_path'], f)
+                for f in os.listdir(self.quantization_cfg['calibration_data_path'])
                 if f.endswith('.ogg') or f.endswith('.wav')
             ]
             random.shuffle(audio_files)
 
             specs_list = []
             for af in audio_files:
-                audio, _ = librosa.load(af, sr=self.sample_rate)
+                audio, _ = librosa.load(af, sr=self.inference_cfg['sample_rate'])
                 chunk = self._prepare_audio_chunk(audio)
                 with torch.no_grad():
                     spec_t = self.spectogram_extractor(chunk.unsqueeze(0))
                 specs_list.append(spec_t.cpu().numpy())
-                if len(specs_list) >= self.n_calibration_samples:
+                if len(specs_list) >= self.quantization_cfg['n_calibration_samples']:
                     break
 
             reader = SpectrogramCalibrationDataReader(
@@ -174,10 +123,10 @@ class Inference:
                 quant_format=QuantFormat.QDQ,
                 activation_type=QuantType.QUInt8,
                 weight_type=QuantType.QUInt8,
-                per_channel=self.per_channel,
+                per_channel=self.quantization_cfg['per_channel'],
             )
         else:
-            raise ValueError(f"Unknown quantization_type={self.quantization_type}")
+            raise ValueError(f"Unknown quantization_type={self.quantization_cfg['quantization_type']}")
 
         # load ORT session
         sess_opts = ort.SessionOptions()
@@ -198,12 +147,12 @@ class Inference:
 
     def _load_model(self) -> SpecCNNClassifier:
         """Load the trained model from checkpoint."""
-        checkpoint = torch.load(self.model_path, map_location=self.device)
+        checkpoint = torch.load(self.inference_cfg['model_path'], map_location=self.inference_cfg['device'] )
         
-        self.model_config['pretrained'] = False
+        self.model_cfg['pretrained'] = False
         model = SpecCNNClassifier(
-            **self.model_config,
-            device=self.device
+            **self.model_cfg,
+            device=self.inference_cfg['device'] 
         )
         
         if isinstance(checkpoint, dict) and 'state_dict' in checkpoint:
@@ -217,12 +166,12 @@ class Inference:
         else:
             model.load_state_dict(checkpoint, strict=False)
             
-        model = model.to(self.device)
+        model = model.to(self.inference_cfg['device'] )
         return model
     
     def _prepare_audio_chunk(self, audio: np.ndarray) -> torch.Tensor:
         """Prepare audio chunk for inference."""
-        target_length = int(self.sample_rate * self.target_duration)
+        target_length = int(self.inference_cfg['sample_rate'] * self.inference_cfg['target_duration'])
         if len(audio) < target_length:
             audio = np.pad(audio, (0, target_length - len(audio)), mode='constant')
         elif len(audio) > target_length:
@@ -235,10 +184,10 @@ class Inference:
     def _get_audio_chunks(self, audio_path: str):
         """Get all chunks from an audio file with their metadata."""
         try:
-            audio, _ = librosa.load(audio_path, sr=self.sample_rate)
+            audio, _ = librosa.load(audio_path, sr=self.inference_cfg['sample_rate'])
             soundscape_id = Path(audio_path).stem
             
-            chunk_size = int(self.sample_rate * self.target_duration)
+            chunk_size = int(self.inference_cfg['sample_rate'] * self.inference_cfg['target_duration'])
             for i in range(0, len(audio), chunk_size):
                 chunk = audio[i:i + chunk_size]
                 yield (chunk, soundscape_id, i // chunk_size)
@@ -251,10 +200,10 @@ class Inference:
         audio_chunks, soundscape_ids, chunk_indices = zip(*batch)
         self.logger.append(list(zip(soundscape_ids, chunk_indices)))
 
-        batch_tensor = torch.stack([self._prepare_audio_chunk(chunk) for chunk in audio_chunks]).to(self.device)
+        batch_tensor = torch.stack([self._prepare_audio_chunk(chunk) for chunk in audio_chunks]).to(self.inference_cfg['device'] )
         
 
-        if self.quantization_type != "none":
+        if self.quantization_cfg['quantization_type'] != "none":
             specs = self.spectogram_extractor(batch_tensor)  # [B, n_mels, T]
             specs_np = specs.cpu().numpy().astype(np.float32)
             logits_np = self.onnx_session.run(
@@ -270,50 +219,17 @@ class Inference:
                 scores = torch.sigmoid(logits).cpu().numpy()
 
 
-        predictions = pd.DataFrame(columns=['row_id'] + self.class_labels)
+        predictions = pd.DataFrame(columns=['row_id'] + self.inference_cfg['class_labels'])
         for i, (sid, idx) in enumerate(zip(soundscape_ids, chunk_indices)):
-            row_id = f"{sid}_{(idx + 1) * int(self.target_duration)}"
+            row_id = f"{sid}_{(idx + 1) * int(self.inference_cfg['target_duration'])}"
             row = [row_id] + scores[i].tolist()
             predictions.loc[i] = row
 
         return predictions
-    
-    def _apply_temporal_smoothing(self, predictions: pd.DataFrame) -> pd.DataFrame:
-        """Apply temporal smoothing to predictions using weighted averages of adjacent chunks."""
-        cols = self.class_labels
-        groups = predictions['row_id'].str.rsplit('_', n=1).str[0].values
-        
-        for group in np.unique(groups):
-            sub_group = predictions[group == groups]
-            pred_values = sub_group[cols].values
-            new_predictions = pred_values.copy()
-            
-            # Process middle chunks
-            for i in range(1, pred_values.shape[0]-1):
-                new_predictions[i] = (
-                    pred_values[i-1] * self.middle_chunks_weights['prev'] +
-                    pred_values[i]   * self.middle_chunks_weights['curr'] +
-                    pred_values[i+1] * self.middle_chunks_weights['next']
-                )
-            
-            # Process edge chunks
-            if pred_values.shape[0] > 1:
-                new_predictions[0] = (
-                    pred_values[0] * self.edge_chunk_weights['main'] +
-                    pred_values[1] * self.edge_chunk_weights['neighbor']
-                )
-                new_predictions[-1] = (
-                    pred_values[-1] * self.edge_chunk_weights['main'] +
-                    pred_values[-2] * self.edge_chunk_weights['neighbor']
-                )
-            
-            predictions.loc[group == groups, cols] = new_predictions
-        
-        return predictions
 
     def predict_directory(self, directory_path: str) -> pd.DataFrame:
         """Make predictions for all audio files in a directory."""
-        all_predictions = pd.DataFrame(columns=['row_id'] + self.class_labels)
+        all_predictions = pd.DataFrame(columns=['row_id'] + self.inference_cfg['class_labels'])
         
         audio_files = [os.path.join(directory_path, afile) 
                             for afile in sorted(os.listdir(directory_path)) 
@@ -321,7 +237,7 @@ class Inference:
         # print(audio_files)
 
         # test
-        # audio_files = audio_files[:16]
+        # audio_files = audio_files[:8]
 
         batch = []
         
@@ -330,7 +246,7 @@ class Inference:
             for chunk in self._get_audio_chunks(audio_file):
                 batch.append(chunk)
 
-                if len(batch) == self.batch_size:
+                if len(batch) == self.inference_cfg['batch_size'] :
                     preds = self._process_batch(batch)
 
                     all_predictions = pd.concat([all_predictions, preds], 
@@ -345,8 +261,19 @@ class Inference:
                                       axis=0, ignore_index=True)
         
         #  temporal smoothing
-        if self.temporal_smoothing:
-            all_predictions = self._apply_temporal_smoothing(all_predictions)
+        if self.smoothing_cfg['temporal_smoothing_type'] is not None:
+
+            print(f"Using temporal smoothing {self.smoothing_cfg['temporal_smoothing_type']}")
+            
+
+            smoother = Smoothing(
+                method=self.smoothing_cfg['temporal_smoothing_type'],
+                params=self.smoothing_cfg['temporal_smoothing_params'][self.smoothing_cfg['temporal_smoothing_type']],
+                class_labels=self.inference_cfg['class_labels']
+            )
+
+            all_predictions = smoother.apply(all_predictions)
+        
         
         for i in self.logger:
             print(i)

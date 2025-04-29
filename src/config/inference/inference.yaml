@@ -1,15 +1,10 @@
-checkpoint_path: "model.ckpt"
-#"logdirs/checkpoints/efficientnet_b0_soft_ce_softmax/last.ckpt"
-batch_size: 128
 
-# inference paths
-# local
+checkpoint_path: "model.ckpt"
+batch_size: 128
+device: cpu
 train_audio_path: "data/birdclef2025/train_audio" 
 test_soundscape_path: "data/birdclef2025/train_soundscapes"
-calibration_dir: "data/birdclef2025/train_soundscapes"
-# kaggle
-# train_audio_path: "/kaggle/input/birdclef-2025/train_audio/"
-# test_soundscape_path: "/kaggle/input/birdclef-2025/test_soundscapes/"
+
 
 quantization:
 
@@ -17,16 +12,41 @@ quantization:
   per_channel: True
   calibration_data_path: "data/birdclef2025/train_soundscapes"
   n_calibration_samples: 200
+  onnx_dir: .
 
-temp_smoothing:
-  use_temp_smoothing: True
-  middle_chunks_weights: {
-    prev: 0.2,
-    curr: 0.6,
-    next: 0.2
-  }
-  edge_chunk_weights: {
-    main: 0.8,
-    neighbor: 0.2
-  }
+
+temporal_smoothing:
+
+  temporal_smoothing_type: neighbor_average # moving_average | triangular | savitzky | median | exponential | neighbor_average
+  
+  temporal_smoothing_params:
+
+    neighbor_average:
+      middle_chunks_weights: {
+        prev: 0.1,
+        curr: 0.8,
+        next: 0.1
+      }
+      edge_chunk_weights: {
+        main: 0.8,
+        neighbor: 0.2
+      }
+
+    exponential:
+      alpha: 0.3
+
+    meidan:
+      kernel_size: 3
+    
+    triangular:
+      window_size: 3
+    
+    moving_average:
+      window_size: 3
+
+    savitzky:
+      window_size: 3
+      polyorder: 2
+
+      
 
