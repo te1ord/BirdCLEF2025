@@ -91,7 +91,7 @@ class Smoothing:
             'savitzky': ['window_size', 'polyorder'],
             'median': ['kernel_size'],
             'exponential': ['alpha'],
-            'neighbor_average': ['middle_weights', 'edge_weights'],
+            'neighbor_average': ['middle_chunks_weights', 'edge_chunk_weights'],
         }
         
         if method not in required:
@@ -127,8 +127,8 @@ class Smoothing:
             elif self.method == 'neighbor_average':
                 sm = neighbor_average_filter(
                     chunk_vals,
-                    self.params['middle_weights'],
-                    self.params['edge_weights']
+                    self.params['middle_chunks_weights'],
+                    self.params['edge_chunk_weights']
                 )
             else:
                 sm = chunk_vals.copy()

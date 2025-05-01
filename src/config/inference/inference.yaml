@@ -17,7 +17,7 @@ quantization:
 
 temporal_smoothing:
 
-  temporal_smoothing_type: neighbor_average # moving_average | triangular | savitzky | median | exponential | neighbor_average
+  temporal_smoothing_type: neighbor_average # none | moving_average | triangular | savitzky | median | exponential | neighbor_average
   
   temporal_smoothing_params:
 
@@ -35,7 +35,7 @@ temporal_smoothing:
     exponential:
       alpha: 0.3
 
-    meidan:
+    median:
       kernel_size: 3
     
     triangular:
