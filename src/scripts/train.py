@@ -145,6 +145,7 @@ def main(cfg: DictConfig):
         log_every_n_steps=cfg.training.trainer.log_every_n_steps,
         val_check_interval=cfg.training.trainer.get("val_check_interval"),
         callbacks=all_callbacks,
+        # gradient_clip_val=cfg.training.trainer.gradient_clip_val
     )
 
     trainer.fit(

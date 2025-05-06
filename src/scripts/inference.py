@@ -35,7 +35,9 @@ def main(cfg: DictConfig) -> None:
         "normalize_config": dict(cfg.model.normalize_config),
         "pretrained": cfg.model.pretrained,
         "spec_augment_config": None,
-        "timm_kwargs": cfg.model.timm_kwargs        
+        "timm_kwargs": cfg.model.timm_kwargs,
+        "out_indices": cfg.model.out_indices,
+        "pool_type": cfg.model.pool_type      
     }
 
     quantization_config = {
