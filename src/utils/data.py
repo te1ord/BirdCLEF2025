@@ -28,6 +28,7 @@ def create_datasets(
     df: pd.DataFrame,
     val_fold: int,
     audio_dir: str,
+    sample_submission_path: str,
     **kwargs: Dict[str, Any]
 ) -> tuple[AudioDataset, AudioDataset]:
 
@@ -42,19 +43,24 @@ def create_datasets(
     train_df = df[df["fold"] != val_fold]
     val_df = df[df["fold"] == val_fold]
 
+    # Get class names
+    ss_df = pd.read_csv(sample_submission_path)
+    class_names = sorted(ss_df.columns[1:].tolist())
+
     train_dataset = prepare_data(
         df=train_df,
         audio_dir=audio_dir,
         **kwargs.get("train_args", {}),
-        audio_transforms = kwargs['audio_transforms']
-
+        audio_transforms = kwargs['audio_transforms'],
+        class_names=class_names,
     )
 
     val_dataset = prepare_data(
         df=val_df,
         audio_dir=audio_dir,
         **kwargs.get("val_args", {}),
-        audio_transforms = None
+        audio_transforms = None,
+        class_names=class_names,
     )
 
     return train_dataset, val_dataset, class_freq

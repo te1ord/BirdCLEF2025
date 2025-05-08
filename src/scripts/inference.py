@@ -13,8 +13,8 @@ def main(cfg: DictConfig) -> None:
     model_path = Path(cfg.inference.checkpoint_path)
     test_soundscape_path = Path(cfg.inference.test_soundscape_path)
     
-    df = pd.read_csv(cfg.data.paths.train_csv)
-    class_labels = sorted(df.primary_label.unique())
+    ss_df = pd.read_csv(cfg.data.paths.sample_submission)
+    class_labels = sorted(ss_df.columns[1:].tolist())
     
     
     inference_config = {

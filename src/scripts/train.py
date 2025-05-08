@@ -44,6 +44,7 @@ def main(cfg: DictConfig):
     train_dataset, val_dataset, class_weights = create_datasets(
         df=df,
         audio_dir=cfg.data.paths.audio_dir,
+        sample_submission_path=cfg.data.paths.sample_submission,
         **cfg.data.dataset_args,
         audio_transforms=Compose(audio_transforms),
     )

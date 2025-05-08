@@ -7,7 +7,7 @@ from sklearn.preprocessing import OneHotEncoder
 import librosa
 from audiomentations import Compose
 
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
 
@@ -19,6 +19,7 @@ class AudioDataset(torch.utils.data.Dataset):
         input_df: pd.DataFrame,
         filenpath_col: str,
         target_col: str,
+        class_names: List[str],
         sample_rate: int,
         target_duration: float,
         normalize_audio: bool,
@@ -34,7 +35,7 @@ class AudioDataset(torch.utils.data.Dataset):
 
         self.filenpath_col = filenpath_col
         self.target_col = target_col
-        self.target_encoder = self._get_target_encoder()
+        self.target_encoder = self._get_target_encoder(class_names)
 
         self.sample_rate = sample_rate
         self.target_duration = target_duration
@@ -63,11 +64,9 @@ class AudioDataset(torch.utils.data.Dataset):
     
 
     # TODO Fix labels order
-    def _get_target_encoder(self):
-        target_encoder = OneHotEncoder()
-        target_encoder.fit(
-            X=self.df[self.target_col].values.reshape(-1, 1)
-            )
+    def _get_target_encoder(self, class_names):
+        target_encoder = OneHotEncoder(categories=[class_names])
+        target_encoder.fit(np.array(class_names).reshape(-1, 1))
         
         return target_encoder
     
