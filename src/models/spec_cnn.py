@@ -5,28 +5,8 @@ import timm
 from typing import Dict, Any, Optional, List
 from torchaudio.transforms import MelSpectrogram
 from src.augmentations import ChannelAgnosticAmplitudeToDB, NormalizeMelSpec, CustomFreqMasking, CustomTimeMasking
+from .blocks import GeMGlobal
 
-class GeMGlobal(nn.Module):
-    def __init__(self, p: float = 3., eps: float = 1e-6):
-        super().__init__()
-        self.p    = nn.Parameter(torch.ones(1) * p)
-        self.eps  = eps
-
-        # this becomes ONNX GlobalAveragePool
-        self.pool = nn.AdaptiveAvgPool2d((1,1))
-
-    def forward(self, x):
-        # x: [B, C, H, W]
-        # 1) clamp & power
-        x = x.clamp(min=self.eps).pow(self.p)
-        # 2) global average → [B, C, 1, 1]
-        x = self.pool(x)
-        # 3) root
-        x = x.pow(1.0 / self.p)
-        # 4) flatten to [B, C]
-        return x.view(x.size(0), x.size(1))
-
-    
 class SpecCNNClassifier(nn.Module):
     def __init__(
         self,
@@ -40,6 +20,7 @@ class SpecCNNClassifier(nn.Module):
         pretrained: bool,
         pool_type: str,
         out_indices: List[int],
+        in_chans: int,
         timm_kwargs: Optional[Dict],
         spec_augment_config: Optional[Dict[str, Any]]
         
@@ -47,6 +28,7 @@ class SpecCNNClassifier(nn.Module):
         super().__init__()
         timm_kwargs = {} if timm_kwargs == "None" else timm_kwargs
         self.out_indices = None if out_indices == "None" else tuple(out_indices)
+        self.n_specs = in_chans
 
         self.device = device
 
@@ -72,7 +54,7 @@ class SpecCNNClassifier(nn.Module):
             backbone,
             features_only=True,
             pretrained=pretrained,
-            in_chans=1,
+            in_chans=self.n_specs,
             exportable=True,
             out_indices=self.out_indices,
             **timm_kwargs,
@@ -115,13 +97,17 @@ class SpecCNNClassifier(nn.Module):
         # specs
         specs = self.spectogram_extractor(input)
 
+        # multi channel mode support
+        specs = specs.unsqueeze(1).expand(-1, self.n_specs, -1, -1).contiguous()
+
         if self.spec_augment is not None and self.training:
             specs = self.spec_augment(specs)
         if return_spec_feature:
             return specs
 
-        # features - list of stages
-        features = self.backbone(specs.unsqueeze(1))
+        # features - list of stages            
+        features = self.backbone(specs)
+
         if self.out_indices is None:
             features = [features[-1]]
 

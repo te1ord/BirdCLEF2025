@@ -25,22 +25,30 @@ class SpectrogramCalibrationDataReader(CalibrationDataReader):
 class CNNWrapper(torch.nn.Module):
     def __init__(self, speccnn: torch.nn.Module):
         super().__init__()
-        # grab just the parts we want to quantize
-        self.backbone   = speccnn.backbone
-        self.pools      = speccnn.pool       # ModuleList of GeMGlobal
-        self.classifier = speccnn.classifier
+        # grab the backbone & head as before
+        self.backbone    = speccnn.backbone
+        self.pools       = speccnn.pool
+        self.classifier  = speccnn.classifier
         self.out_indices = speccnn.out_indices
+        self.n_specs = speccnn.n_specs
 
     def forward(self, specs: torch.Tensor):
         """
-        specs: [B, n_mels, T]  (already run through MelSpectrogram+DB+Norm)
+        specs: [B, n_mels, T]  (already MelSpectrogram + DB + Norm)
         """
-        feats = self.backbone(specs.unsqueeze(1))
 
+        # 1) turn into [B, 1, F, T]
+        x = specs.unsqueeze(1)
+
+        # 2) fake-RGB if needed → [B, n_specs, F, T]
+        if self.n_specs > 1:
+            x = x.expand(-1, self.n_specs, -1, -1).contiguous()
+
+        # 3) rest is unchanged
+        feats = self.backbone(x)
         if self.out_indices is None:
             feats = [feats[-1]]
 
-        pooled = [ g(f) for f, g in zip(feats, self.pools) ]
+        pooled = [g(f) for f, g in zip(feats, self.pools)]
         emb = torch.cat(pooled, dim=1)
-
         return self.classifier(emb)
