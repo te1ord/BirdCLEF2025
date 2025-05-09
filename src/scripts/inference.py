@@ -16,7 +16,7 @@ def main(cfg: DictConfig) -> None:
     ss_df = pd.read_csv(cfg.data.paths.sample_submission)
     class_labels = sorted(ss_df.columns[1:].tolist())
     
-    
+    # Set up inference configuration
     inference_config = {
         'model_path': str(model_path),
         'device': cfg.inference.device,
@@ -25,6 +25,13 @@ def main(cfg: DictConfig) -> None:
         'sample_rate': cfg.data.dataset_args.train_args.sample_rate,
         'target_duration': cfg.data.dataset_args.train_args.target_duration,
     }
+    
+    # Add ensemble configuration if present
+    if hasattr(cfg.inference, 'ensemble'):
+        inference_config['ensemble'] = dict(cfg.inference.ensemble)
+        
+        if inference_config['ensemble']['enabled']:
+            print(f"Using ensemble of {len(inference_config['ensemble']['models'])} models with weights: {[m.weight for m in cfg.inference.ensemble.models]}")
 
     model_config = {
         "backbone": cfg.model.backbone,

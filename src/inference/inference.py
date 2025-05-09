@@ -4,7 +4,7 @@ import torch
 import librosa
 import numpy as np
 import pandas as pd
-from typing import List, Optional, Tuple, Dict
+from typing import List, Optional, Tuple, Dict, Union, Any
 from pathlib import Path
 from tqdm import tqdm
 import gc
@@ -31,40 +31,77 @@ class Inference:
         model_cfg,
         quantization_cfg,
         smoothing_cfg
-
     ):
         self.inference_cfg = inference_cfg
-        self.model_cfg = model_cfg
         self.quantization_cfg = quantization_cfg
         self.smoothing_cfg = smoothing_cfg
 
-        self.model = self._load_model().eval()
+        # Set up ensemble (single model is treated as ensemble of one)
+        self.models = []
+        self.model_weights = []
+        self.spectogram_extractors = []
+        
+        # Multi-model ensemble from configuration
+        normalize_weights = self.inference_cfg['ensemble'].get('normalize_weights', True)
+        
+        # Load all models in the ensemble
+        for model_config in self.inference_cfg['ensemble']['models']:
+            model_path = model_config['path']
+            model_weight = float(model_config['weight'])
+            
+            # Support for different model configurations
+            model_specific_cfg = model_config.get('model_cfg', self.model_cfg)
+            
+            model = self._load_model(model_path, model_specific_cfg).eval()
+            self.models.append(model)
+            self.model_weights.append(model_weight)
+            self.spectogram_extractors.append(model.spectogram_extractor)
+            
+        # Normalize weights if needed
+        if normalize_weights:
+            weight_sum = sum(self.model_weights)
+            if weight_sum > 0:
+                self.model_weights = [w / weight_sum for w in self.model_weights]
 
 
+        # Quantization handling
         if self.quantization_cfg['quantization_type'] != "none":
-            self.spectogram_extractor = self.model.spectogram_extractor
-            self._export_and_quantize()
-            del self.model
+            # Create ONNX sessions for each model in the ensemble
+            self.onnx_sessions = []
+            self.onnx_in_names = []
+            self.onnx_out_names = []
+            
+            for i, (model, spec_extractor) in enumerate(zip(self.models, self.spectogram_extractors)):
+                # Only add model suffix if we have multiple models
+                model_suffix = f"_model{i}" if len(self.models) > 1 else ""
+                session, in_name, out_name = self._export_and_quantize_model(model, spec_extractor, model_suffix)
+                self.onnx_sessions.append(session)
+                self.onnx_in_names.append(in_name)
+                self.onnx_out_names.append(out_name)
+                
+            # Clear up memory for non-used models
+            for model in self.models:
+                del model
             torch.cuda.empty_cache()
-            self.model = None
+            self.models = None
             gc.collect()
         else:
-            self.onnx_session = None
+            self.onnx_sessions = None
 
         self.logger = []
 
-    def _export_and_quantize(self):
-
+    def _export_and_quantize_model(self, model, spec_extractor, suffix=""):
+        """Export and quantize a single model and return the ONNX session"""
         # cnn wrapper to quantize only model (not spec extractor)
-        wrapper = CNNWrapper(self.model).to(self.inference_cfg['device'] ).eval()
+        wrapper = CNNWrapper(model).to(self.inference_cfg['device']).eval()
 
         # get dummy spec
         dummy_audio = torch.randn(1, int(self.inference_cfg['sample_rate'] * self.inference_cfg['target_duration']))
         with torch.no_grad():
-            dummy_spec = self.spectogram_extractor(dummy_audio)
+            dummy_spec = spec_extractor(dummy_audio)
 
         # export to ONNX
-        onnx_fp = os.path.join(self.quantization_cfg['onnx_dir'], "cnn_subnet.onnx")
+        onnx_fp = os.path.join(self.quantization_cfg['onnx_dir'], f"cnn_subnet{suffix}.onnx")
         torch.onnx.export(
             wrapper, (dummy_spec,), onnx_fp,
             input_names=["specs"], output_names=["logits"],
@@ -81,7 +118,6 @@ class Inference:
             quant_fp = onnx_fp  
         
         elif self.quantization_cfg['quantization_type'] == "dynamic":
-            
             quant_fp = onnx_fp.replace(".onnx", "_quant.onnx")
             quantize_dynamic(
                 quant_source, quant_fp,
@@ -108,7 +144,7 @@ class Inference:
                 audio, _ = librosa.load(af, sr=self.inference_cfg['sample_rate'])
                 chunk = self._prepare_audio_chunk(audio)
                 with torch.no_grad():
-                    spec_t = self.spectogram_extractor(chunk.unsqueeze(0))
+                    spec_t = spec_extractor(chunk.unsqueeze(0))
                 specs_list.append(spec_t.cpu().numpy())
                 if len(specs_list) >= self.quantization_cfg['n_calibration_samples']:
                     break
@@ -132,26 +168,34 @@ class Inference:
         sess_opts = ort.SessionOptions()
         sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
         sess_opts.intra_op_num_threads = os.cpu_count() or 1
-        self.onnx_session = ort.InferenceSession(
+        session = ort.InferenceSession(
             quant_fp, sess_opts, providers=["CPUExecutionProvider"]
         )
-        self.onnx_in_name = self.onnx_session.get_inputs()[0].name
-        self.onnx_out_name = self.onnx_session.get_outputs()[0].name
+        in_name = session.get_inputs()[0].name
+        out_name = session.get_outputs()[0].name
 
         # warm up
-        self.onnx_session.run(
-            [self.onnx_out_name],
-            {self.onnx_in_name: dummy_spec.cpu().numpy().astype(np.float32)}
+        session.run(
+            [out_name],
+            {in_name: dummy_spec.cpu().numpy().astype(np.float32)}
         )
-
-
-    def _load_model(self) -> SpecCNNClassifier:
-        """Load the trained model from checkpoint."""
-        checkpoint = torch.load(self.inference_cfg['model_path'], map_location=self.inference_cfg['device'] )
         
-        self.model_cfg['pretrained'] = False
+        return session, in_name, out_name
+
+    def _export_and_quantize(self):
+        """Legacy method kept for backward compatibility"""
+        return self._export_and_quantize_model(self.models[0], self.spectogram_extractors[0])
+
+    def _load_model(self, model_path: Optional[str] = None, model_cfg: Optional[Dict] = None) -> SpecCNNClassifier:
+        """Load the trained model from checkpoint."""
+        checkpoint = torch.load(model_path, map_location=self.inference_cfg['device'])
+        
+        # Create a copy of model_cfg to avoid modifying the original
+        model_cfg = {**model_cfg}
+        model_cfg['pretrained'] = False
+        
         model = SpecCNNClassifier(
-            **self.model_cfg,
+            **model_cfg,
             device=self.inference_cfg['device'] 
         )
         
@@ -166,7 +210,7 @@ class Inference:
         else:
             model.load_state_dict(checkpoint, strict=False)
             
-        model = model.to(self.inference_cfg['device'] )
+        model = model.to(self.inference_cfg['device'])
         return model
     
     def _prepare_audio_chunk(self, audio: np.ndarray) -> torch.Tensor:
@@ -200,24 +244,42 @@ class Inference:
         audio_chunks, soundscape_ids, chunk_indices = zip(*batch)
         self.logger.append(list(zip(soundscape_ids, chunk_indices)))
 
-        batch_tensor = torch.stack([self._prepare_audio_chunk(chunk) for chunk in audio_chunks]).to(self.inference_cfg['device'] )
+        batch_tensor = torch.stack([self._prepare_audio_chunk(chunk) for chunk in audio_chunks]).to(self.inference_cfg['device'])
         
-
         if self.quantization_cfg['quantization_type'] != "none":
-            specs = self.spectogram_extractor(batch_tensor)  # [B, n_mels, T]
-            specs_np = specs.cpu().numpy().astype(np.float32)
-            logits_np = self.onnx_session.run(
-                [self.onnx_out_name],
-                {self.onnx_in_name: specs_np}
-            )[0]
-            scores = torch.sigmoid(torch.from_numpy(logits_np)).numpy()
-
+            # Process each model in the ensemble
+            all_scores = []
+            
+            for i, (session, in_name, out_name, spec_extractor) in enumerate(zip(
+                self.onnx_sessions, self.onnx_in_names, self.onnx_out_names, self.spectogram_extractors
+            )):
+                # Get spectrograms using the model's specific extractor
+                with torch.no_grad():
+                    specs = spec_extractor(batch_tensor)
+                specs_np = specs.cpu().numpy().astype(np.float32)
+                
+                # Run inference on the quantized model
+                logits_np = session.run([out_name], {in_name: specs_np})[0]
+                model_scores = torch.sigmoid(torch.from_numpy(logits_np)).numpy()
+                
+                # Apply weight and add to ensemble scores
+                all_scores.append(model_scores * self.model_weights[i])
+            
+            # Combine weighted scores
+            scores = np.sum(all_scores, axis=0)
         else:
-            with torch.no_grad():
-                output = self.model(batch_tensor)
-                logits = output["logits"]
-                scores = torch.sigmoid(logits).cpu().numpy()
-
+            # Process each model in the ensemble
+            all_scores = []
+            
+            for i, model in enumerate(self.models):
+                with torch.no_grad():
+                    output = model(batch_tensor)
+                    logits = output["logits"]
+                    model_scores = torch.sigmoid(logits).cpu().numpy()
+                    all_scores.append(model_scores * self.model_weights[i])
+            
+            # Combine weighted scores
+            scores = np.sum(all_scores, axis=0)
 
         predictions = pd.DataFrame(columns=['row_id'] + self.inference_cfg['class_labels'])
         for i, (sid, idx) in enumerate(zip(soundscape_ids, chunk_indices)):
