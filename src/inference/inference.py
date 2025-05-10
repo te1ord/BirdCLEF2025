@@ -28,7 +28,6 @@ class Inference:
     def __init__(
         self,
         inference_cfg,
-        model_cfg,
         quantization_cfg,
         smoothing_cfg
     ):
@@ -50,7 +49,7 @@ class Inference:
             model_weight = float(model_config['weight'])
             
             # Support for different model configurations
-            model_specific_cfg = model_config.get('model_cfg', self.model_cfg)
+            model_specific_cfg = model_config.get('model_cfg')
             
             model = self._load_model(model_path, model_specific_cfg).eval()
             self.models.append(model)
@@ -302,6 +301,7 @@ class Inference:
         # audio_files = audio_files[:8]
 
         batch = []
+        batch_dfs = [pd.DataFrame(columns=['row_id'] + self.inference_cfg['class_labels'])]
         
         for audio_file in tqdm(audio_files, desc="Loading audio files"):
             
@@ -310,17 +310,15 @@ class Inference:
 
                 if len(batch) == self.inference_cfg['batch_size'] :
                     preds = self._process_batch(batch)
-
-                    all_predictions = pd.concat([all_predictions, preds], 
-                                      axis=0, ignore_index=True)
+                    batch_dfs.append(preds)
                     batch = []
 
         
         # finish remaining batches
         if batch:
             preds = self._process_batch(batch)
-            all_predictions = pd.concat([all_predictions, preds], 
-                                      axis=0, ignore_index=True)
+            batch_dfs.append(preds)
+        all_predictions = pd.concat(batch_dfs, ignore_index=True)
         
         #  temporal smoothing
         if self.smoothing_cfg['temporal_smoothing_type'] is not None:

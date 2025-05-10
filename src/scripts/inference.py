@@ -3,14 +3,13 @@ import hydra
 from omegaconf import DictConfig
 import pandas as pd
 from pathlib import Path
+from omegaconf import OmegaConf
 
 from src.inference.inference import Inference
 
 
 @hydra.main(version_base=None, config_path="../config", config_name="config")
 def main(cfg: DictConfig) -> None:
-
-    model_path = Path(cfg.inference.checkpoint_path)
     test_soundscape_path = Path(cfg.inference.test_soundscape_path)
     
     ss_df = pd.read_csv(cfg.data.paths.sample_submission)
@@ -18,7 +17,7 @@ def main(cfg: DictConfig) -> None:
     
     # Set up inference configuration
     inference_config = {
-        'model_path': str(model_path),
+        'ensemble': cfg.inference.ensemble,
         'device': cfg.inference.device,
         'batch_size': cfg.inference.batch_size,
         'class_labels': class_labels,
@@ -26,26 +25,26 @@ def main(cfg: DictConfig) -> None:
         'target_duration': cfg.data.dataset_args.train_args.target_duration,
     }
     
-    # Add ensemble configuration if present
-    if hasattr(cfg.inference, 'ensemble'):
-        inference_config['ensemble'] = dict(cfg.inference.ensemble)
-        
-        if inference_config['ensemble']['enabled']:
-            print(f"Using ensemble of {len(inference_config['ensemble']['models'])} models with weights: {[m.weight for m in cfg.inference.ensemble.models]}")
+    for ii, model in enumerate(cfg.inference.ensemble.models):
+        path = Path(model.path)
+        cfg.inference.ensemble.models[ii].path = path / 'model.ckpt'
 
-    model_config = {
-        "backbone": cfg.model.backbone,
-        "n_classes": cfg.model.n_classes,
-        "classifier_dropout": cfg.model.classifier_dropout,
-        "top_db": cfg.model.top_db,
-        "spec_params": dict(cfg.model.spec_params),
-        "normalize_config": dict(cfg.model.normalize_config),
-        "pretrained": cfg.model.pretrained,
-        "spec_augment_config": None,
-        "timm_kwargs": cfg.model.timm_kwargs,
-        "out_indices": cfg.model.out_indices,
-        "pool_type": cfg.model.pool_type      
-    }
+        model_config = OmegaConf.load(path / 'config.yaml')
+        model_config = {
+            "backbone": model_config.model.backbone,
+            "n_classes": model_config.model.n_classes,
+            "classifier_dropout": model_config.model.classifier_dropout,
+            "top_db": model_config.model.top_db,
+            "spec_params": dict(model_config.model.spec_params),
+            "normalize_config": dict(model_config.model.normalize_config),
+            "pretrained": model_config.model.pretrained,
+            "spec_augment_config": None,
+            "timm_kwargs": model_config.model.timm_kwargs,
+            "out_indices": model_config.model.out_indices,
+            "pool_type": model_config.model.pool_type  
+        }
+        cfg.inference.ensemble.models[ii].model_cfg = model_config
+
 
     quantization_config = {
         'quantization_type': cfg.inference.quantization.quantization_type,
@@ -62,7 +61,6 @@ def main(cfg: DictConfig) -> None:
 
     inference = Inference(
         inference_cfg = inference_config,
-        model_cfg=model_config,
         quantization_cfg = quantization_config,
         smoothing_cfg = smoothing_config
     )
