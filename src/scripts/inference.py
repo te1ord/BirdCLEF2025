@@ -42,7 +42,7 @@ def main(cfg: DictConfig) -> None:
             "timm_kwargs": model_config.model.timm_kwargs,
             "out_indices": model_config.model.out_indices,
             "pool_type": model_config.model.pool_type,
-            "in_chans": cfg.model.in_chans  
+            "in_chans": model_config.in_chans  
         }
         cfg.inference.ensemble.models[ii].model_cfg = model_config
 
