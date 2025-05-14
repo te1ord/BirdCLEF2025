@@ -1,10 +1,15 @@
 # Paths
 paths:
-  train_csv: "data/cv_split.csv"
+  train_csv: "data/cv_split_wsecondary.csv"
   audio_dir: "data/birdclef2025/train_audio"
+  sample_submission: "data/birdclef2025/sample_submission.csv"
 
 # Audio processing
 dataset_args:
+
+  # use secondary labels
+  secondary_target_col: "parsed_secondary_labels" # none
+  beta: 0.2 # weight for all secondary labels - for each would be beta/len(secondary labels)
 
   val_fold: 0
 
@@ -13,6 +18,8 @@ dataset_args:
   
   train_args:
     target_col: "primary_label"
+    secondary_target_col: ${..secondary_target_col}
+    beta: ${..beta}
     filenpath_col: "filename"
     sample_rate: 32000
     target_duration: 5.0  # seconds
@@ -24,18 +31,20 @@ dataset_args:
     cache_n_samples: 5000
 
     # sample piece selection
-    wave_piece: random # center # random
+    wave_piece: center # center # random
     
     # mixup
     mixup_audio: True
     mixup_params:
-      prob: 0.5
+      prob: 1
       alpha: 0.5
       hard_target: False
     
 
   val_args:
     target_col: "primary_label"
+    secondary_target_col: ${..secondary_target_col}
+    beta: ${..beta}
     filenpath_col: "filename"
     sample_rate: 32000
     target_duration: 5.0  # seconds
@@ -46,7 +55,7 @@ dataset_args:
     use_cache: False
     
     # sample piece selection
-    wave_piece: random # center # random
+    wave_piece: center # center # random
 
     # mixup
     mixup_audio: False
@@ -58,7 +67,7 @@ dataset_args:
 
 dataloader_args:
   train_args:
-    batch_size: 16
+    batch_size: 64
     num_workers: 4
     persistent_workers: True
     pin_memory: True
@@ -66,7 +75,7 @@ dataloader_args:
     drop_last: True
     
   val_args:
-    batch_size: 16
+    batch_size: 64
     num_workers: 4
     persistent_workers: True
     pin_memory: True

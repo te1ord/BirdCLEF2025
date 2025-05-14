@@ -2,7 +2,7 @@ import torch
 import numpy as np
 import pandas as pd
 
-from sklearn.preprocessing import OneHotEncoder
+from sklearn.preprocessing import MultiLabelBinarizer
 
 import librosa
 from audiomentations import Compose
@@ -10,6 +10,7 @@ from audiomentations import Compose
 from typing import Dict, Optional, List
 from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
+import ast
 
 
 
@@ -19,6 +20,8 @@ class AudioDataset(torch.utils.data.Dataset):
         input_df: pd.DataFrame,
         filenpath_col: str,
         target_col: str,
+        secondary_target_col: str,
+        beta: float,
         class_names: List[str],
         sample_rate: int,
         target_duration: float,
@@ -32,10 +35,16 @@ class AudioDataset(torch.utils.data.Dataset):
         cache_n_samples: Optional[int] = 0,
     ):
         self.df = input_df.reset_index(drop=True)
-
         self.filenpath_col = filenpath_col
         self.target_col = target_col
-        self.target_encoder = self._get_target_encoder(class_names)
+        self.secondary_target_col = secondary_target_col
+        
+        self.df[secondary_target_col] = self.df[secondary_target_col].apply(
+            lambda x: ast.literal_eval(x) if isinstance(x, str) and x.startswith('[') else []
+        )
+
+        self.target_encoder = MultiLabelBinarizer(classes=class_names)
+        self.target_encoder.fit([class_names])
 
         self.sample_rate = sample_rate
         self.target_duration = target_duration
@@ -47,7 +56,9 @@ class AudioDataset(torch.utils.data.Dataset):
 
         if self.mixup_audio:
             assert mixup_params is not None, "If mixup_audio is True, mixup_params must not be None."
+        
         self.mixup_params = mixup_params
+        self.beta = beta
 
         self.is_train = is_train
 
@@ -61,15 +72,6 @@ class AudioDataset(torch.utils.data.Dataset):
 
     def __len__(self):
         return len(self.df)
-    
-
-    # TODO Fix labels order
-    def _get_target_encoder(self, class_names):
-        target_encoder = OneHotEncoder(categories=[class_names])
-        target_encoder.fit(np.array(class_names).reshape(-1, 1))
-        
-        return target_encoder
-    
 
     def _cache_samples(self, top_n: int):
         def load_wave(args):
@@ -98,27 +100,57 @@ class AudioDataset(torch.utils.data.Dataset):
         return mixup_idx
     
 
+    def _get_labels(self, idx: int):
+        prim = self.df.at[idx, self.target_col]
+        secs = self.df.at[idx, self.secondary_target_col] or []
+        return prim, list(secs)
+
+
     def _prepare_target(self, idx: int, sec_idx: Optional[int] = None):
-        if not sec_idx:
-            idxs = [idx]
-            weights = np.array([1])
+        prim1, sec1 = self._get_labels(idx)
+        alpha = self.mixup_params.get("alpha", 0.5)
+        classes = list(self.target_encoder.classes_)
+        K = len(classes)
+        vec = np.zeros(K, dtype=float)
 
+        # --- no mixup ---
+        if sec_idx is None:
+            i1 = classes.index(prim1)
+            if self.mixup_params.get("hard_target", True):
+                # hard: just multi-hot union of prim+secs
+                vec[i1] = 1.0
+                for s in sec1:
+                    vec[classes.index(s)] = 1.0
+            else:
+                # soft:
+                if sec1:
+                    vec[i1] = 1.0 - self.beta
+                    share = self.beta / len(sec1)
+                    for s in sec1:
+                        vec[classes.index(s)] = share
+                else:
+                    # no secondaries → full mass on primary
+                    vec[i1] = 1.0
+
+            return (vec > 0).astype(int) if self.mixup_params["hard_target"] else vec
+
+        # --- mixup of two samples ---
+        prim2, sec2 = self._get_labels(sec_idx)
+        union_secs = set(sec1) | set(sec2)
+
+        if union_secs:
+            # there are secondaries → reserve β mass
+            vec[classes.index(prim1)] = alpha * (1 - self.beta)
+            vec[classes.index(prim2)] = (1 - alpha) * (1 - self.beta)
+            share = self.beta / len(union_secs)
+            for s in union_secs:
+                vec[classes.index(s)] += share
         else:
-            idxs = [idx, sec_idx]
+            # no secondaries → β→0, exactly α & 1-α
+            vec[classes.index(prim1)] = alpha
+            vec[classes.index(prim2)] = 1 - alpha
 
-            alpha = self.mixup_params['alpha']
-            weights = np.array([alpha, 1-alpha])
-
-
-        labels = self.df.loc[idxs, self.target_col].values.reshape(-1, 1)
-        encoded_labels = self.target_encoder.transform(labels).toarray()
-
-        labels = weights @ encoded_labels
-
-        if self.mixup_params.get("hard_target", True):
-            labels = (labels > 0).astype(int)
-
-        return labels
+        return (vec > 0).astype(int) if self.mixup_params.get("hard_target", True) else vec
 
 
     def _prepare_sample_piece(self, sample):
